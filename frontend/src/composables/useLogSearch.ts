@@ -2,7 +2,7 @@
  * 日志搜索与分页 Composable
  * 提取 Logs.vue 中的搜索、过滤、分页逻辑
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { logApi, taskApi } from '../utils/api.js'
 
@@ -24,7 +24,7 @@ export interface Task {
 
 export interface LogFilters {
   taskId: number | null
-  statusFilter: string | number | null  // running | 0 | -99 | -1 | null
+  statusFilter: string | number | null
   keyword: string
 }
 
@@ -38,11 +38,6 @@ export interface LogSearchParams {
   keyword?: string
   start_date?: string
   end_date?: string
-}
-
-export interface PaginatedLogs {
-  total: number
-  items: LogEntry[]
 }
 
 // ============= 状态定义 =============
@@ -68,7 +63,7 @@ const dateRange = ref<[Date, Date] | null>(null)
 const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
 
 // ============= API 方法 =============
-async function fetchTasks(): Promise<void> {
+async function fetchTasksAction(): Promise<void> {
   try {
     const res = await taskApi.list()
     tasks.value = res.data
@@ -77,7 +72,7 @@ async function fetchTasks(): Promise<void> {
   }
 }
 
-async function fetchLogs(): Promise<void> {
+async function fetchLogsAction(): Promise<void> {
   loading.value = true
   try {
     const params: LogSearchParams = {
@@ -89,7 +84,6 @@ async function fetchLogs(): Promise<void> {
       params.task_id = filters.value.taskId
     }
 
-    // 状态过滤映射
     const status = filters.value.statusFilter
     if (status === 'running') {
       params.is_running = true
@@ -121,12 +115,12 @@ async function fetchLogs(): Promise<void> {
 }
 
 // ============= 过滤与分页操作 =============
-function applyFilters(): void {
+function applyFiltersAction(): void {
   currentPage.value = 1
-  fetchLogs()
+  fetchLogsAction()
 }
 
-function resetFilters(): void {
+function resetFiltersAction(): void {
   filters.value = {
     taskId: null,
     statusFilter: null,
@@ -134,22 +128,22 @@ function resetFilters(): void {
   }
   dateRange.value = null
   currentPage.value = 1
-  fetchLogs()
+  fetchLogsAction()
 }
 
-function handlePageChange(page: number): void {
+function handlePageChangeAction(page: number): void {
   currentPage.value = page
-  fetchLogs()
+  fetchLogsAction()
 }
 
-function handleSizeChange(size: number): void {
+function handleSizeChangeAction(size: number): void {
   pageSize.value = size
   currentPage.value = 1
-  fetchLogs()
+  fetchLogsAction()
 }
 
 // ============= 行展开管理 =============
-function handleExpandChange(row: LogEntry, expanded: boolean): void {
+function handleExpandChangeAction(row: LogEntry, expanded: boolean): void {
   if (expanded) {
     expandedRows.value = [row.id]
   } else {
@@ -157,7 +151,7 @@ function handleExpandChange(row: LogEntry, expanded: boolean): void {
   }
 }
 
-function toggleExpand(row: LogEntry): void {
+function toggleExpandAction(row: LogEntry): void {
   const idx = expandedRows.value.indexOf(row.id)
   if (idx >= 0) {
     expandedRows.value.splice(idx, 1)
@@ -166,23 +160,23 @@ function toggleExpand(row: LogEntry): void {
   }
 }
 
-function clearSelection(): void {
+function clearSelectionAction(): void {
   expandedRows.value = []
 }
 
 // ============= 批量操作 =============
-function handleSelectionChange(selectedIds: number[]): void {
+function handleSelectionChangeAction(selectedIds: number[]): void {
   selectedLogIds.value = selectedIds
 }
 
-async function batchDeleteLogs(): Promise<boolean> {
+async function batchDeleteLogsAction(): Promise<boolean> {
   if (selectedLogIds.value.length === 0) return false
 
   try {
     await logApi.batchDelete(selectedLogIds.value)
     ElMessage.success(`成功删除 ${selectedLogIds.value.length} 条日志`)
     selectedLogIds.value = []
-    fetchLogs()
+    fetchLogsAction()
     return true
   } catch (e) {
     ElMessage.error('批量删除失败')
@@ -190,11 +184,11 @@ async function batchDeleteLogs(): Promise<boolean> {
   }
 }
 
-async function deleteSingleLog(logId: number): Promise<boolean> {
+async function deleteSingleLogAction(logId: number): Promise<boolean> {
   try {
     await logApi.delete(logId)
     ElMessage.success('日志删除成功')
-    fetchLogs()
+    fetchLogsAction()
     return true
   } catch (e) {
     ElMessage.error('删除失败')
@@ -219,17 +213,17 @@ export function useLogSearch() {
     dateRange,
 
     // 方法
-    fetchTasks,
-    fetchLogs,
-    applyFilters,
-    resetFilters,
-    handlePageChange,
-    handleSizeChange,
-    handleExpandChange,
-    toggleExpand,
-    clearSelection,
-    handleSelectionChange,
-    batchDeleteLogs,
-    deleteSingleLog
+    fetchTasks: fetchTasksAction,
+    fetchLogs: fetchLogsAction,
+    applyFilters: applyFiltersAction,
+    resetFilters: resetFiltersAction,
+    handlePageChange: handlePageChangeAction,
+    handleSizeChange: handleSizeChangeAction,
+    handleExpandChange: handleExpandChangeAction,
+    toggleExpand: toggleExpandAction,
+    clearSelection: clearSelectionAction,
+    handleSelectionChange: handleSelectionChangeAction,
+    batchDeleteLogs: batchDeleteLogsAction,
+    deleteSingleLog: deleteSingleLogAction
   }
 }

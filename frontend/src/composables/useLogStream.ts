@@ -1,80 +1,85 @@
 /**
  * 日志实时刷新 Composable
  * 统一管理 autoRefreshTimer 和 liveDurationTimer
- * 使用显式清理模式，避免 onUnmounted 时机问题
+ * 每次调用创建独立状态实例
  */
 import { ref, watch } from 'vue'
 
-// ============= 状态定义 =============
-const autoRefreshInterval = ref<number | null>(null)
-let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
-let liveDurationTimer: ReturnType<typeof setInterval> | null = null
+// ============= 创建 Composable 实例 =============
+function createLogStream() {
+  // 状态定义 - 每个实例独立
+  const autoRefreshInterval = ref<number | null>(null)
+  let autoRefreshTimer: ReturnType<typeof setInterval> | null = null
+  let liveDurationTimer: ReturnType<typeof setInterval> | null = null
+  let isActive = false  // 组件激活标志
 
-// ============= 自动刷新逻辑 =============
-function startAutoRefresh(fetchFn: () => void | Promise<void>): void {
-  stopAutoRefresh()
-  if (autoRefreshInterval.value) {
-    autoRefreshTimer = setInterval(() => {
-      fetchFn()
-    }, autoRefreshInterval.value)
-  }
-}
-
-function stopAutoRefresh(): void {
-  if (autoRefreshTimer) {
-    clearInterval(autoRefreshTimer)
-    autoRefreshTimer = null
-  }
-}
-
-function setAutoRefreshInterval(interval: number | null): void {
-  autoRefreshInterval.value = interval
-}
-
-// ============= 实时时长刷新 =============
-function startLiveDurationRefresh(logsRef: { value: any[] }): void {
-  stopLiveDurationRefresh()
-  // 记录初始长度，避免每次都创建新数组
-  let lastLength = logsRef.value.length
-  liveDurationTimer = setInterval(() => {
-    // 只有在数据实际变化时才触发更新
-    if (logsRef.value.length !== lastLength) {
-      lastLength = logsRef.value.length
-      // 强制触发响应式更新（Vue 3）
-      logsRef.value = [...logsRef.value]
+  // ============= 自动刷新逻辑 =============
+  function startAutoRefresh(fetchFn: () => void | Promise<void>): void {
+    stopAutoRefresh()
+    if (autoRefreshInterval.value) {
+      autoRefreshTimer = setInterval(() => {
+        if (isActive) {
+          fetchFn()
+        }
+      }, autoRefreshInterval.value)
     }
-  }, 1000)
-}
-
-function stopLiveDurationRefresh(): void {
-  if (liveDurationTimer) {
-    clearInterval(liveDurationTimer)
-    liveDurationTimer = null
   }
-}
 
-// ============= 组合式监听 =============
-function setupAutoRefreshWatch(
-  intervalRef: typeof autoRefreshInterval,
-  fetchFn: () => void | Promise<void>
-): void {
-  watch(
-    () => intervalRef.value,
-    (newVal, oldVal) => {
-      if (oldVal) stopAutoRefresh()
-      if (newVal) startAutoRefresh(fetchFn)
+  function stopAutoRefresh(): void {
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer)
+      autoRefreshTimer = null
     }
-  )
-}
+  }
 
-// ============= 清理 =============
-function cleanupAll(): void {
-  stopAutoRefresh()
-  stopLiveDurationRefresh()
-}
+  function setAutoRefreshInterval(interval: number | null): void {
+    autoRefreshInterval.value = interval
+  }
 
-// ============= 导出 =============
-export function useLogStream() {
+  // ============= 实时时长刷新 =============
+  function startLiveDurationRefresh(logsRef: { value: any[] }): void {
+    stopLiveDurationRefresh()
+    isActive = true
+    liveDurationTimer = setInterval(() => {
+      if (!isActive) return
+      // 强制触发响应式更新
+      try {
+        logsRef.value = [...logsRef.value]
+      } catch (e) {
+        // 忽略DOM相关错误
+      }
+    }, 1000)
+  }
+
+  function stopLiveDurationRefresh(): void {
+    isActive = false
+    if (liveDurationTimer) {
+      clearInterval(liveDurationTimer)
+      liveDurationTimer = null
+    }
+  }
+
+  // ============= 组合式监听 =============
+  function setupAutoRefreshWatch(
+    intervalRef: typeof autoRefreshInterval,
+    fetchFn: () => void | Promise<void>
+  ): void {
+    watch(
+      () => intervalRef.value,
+      (newVal, oldVal) => {
+        if (oldVal) stopAutoRefresh()
+        if (newVal) startAutoRefresh(fetchFn)
+      }
+    )
+  }
+
+  // ============= 清理 =============
+  function cleanupAll(): void {
+    isActive = false
+    stopAutoRefresh()
+    stopLiveDurationRefresh()
+  }
+
   return {
     // 状态
     autoRefreshInterval,
@@ -94,4 +99,9 @@ export function useLogStream() {
     // 清理
     cleanupAll
   }
+}
+
+// ============= 导出工厂函数 =============
+export function useLogStream() {
+  return createLogStream()
 }
