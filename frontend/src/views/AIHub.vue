@@ -120,8 +120,8 @@
                 </div>
               </div>
               <div class="provider-actions">
-                <el-button size="small" @click="editProvider(provider)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="deleteProvider(provider.id)">删除</el-button>
+                <el-button size="small" @click="openProviderModal(provider)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="handleDeleteProvider(provider.id)">删除</el-button>
               </div>
             </el-card>
           </el-col>
@@ -167,9 +167,10 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100" align="right">
+          <el-table-column label="操作" width="120" align="right">
             <template #default="{ row }">
-              <el-button size="small" type="primary" plain @click="editModel(row)">编辑</el-button>
+              <el-button size="small" @click="openModelModal(row)">编辑</el-button>
+              <el-button size="small" type="danger" plain @click="handleDeleteModel(row.id)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -212,6 +213,10 @@
                   <span>{{ routing.fallback_model_ids?.length || 0 }} 个</span>
                 </div>
               </div>
+              <div class="routing-actions">
+                <el-button size="small" @click="openRoutingModal(routing)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="handleDeleteRouting(routing.id)">删除</el-button>
+              </div>
             </el-card>
           </el-col>
         </el-row>
@@ -244,7 +249,8 @@
                   <el-tag :type="template.is_enabled ? 'success' : 'info'" size="small">
                     {{ template.is_enabled ? '启用' : '禁用' }}
                   </el-tag>
-                  <el-button size="small" @click="editPromptTemplate(template)">编辑</el-button>
+                  <el-button size="small" @click="openPromptModal(template)">编辑</el-button>
+                  <el-button size="small" type="danger" plain @click="handleDeletePrompt(template.id)">删除</el-button>
                 </div>
               </div>
               <div class="prompt-config">
@@ -288,7 +294,10 @@
               <div class="rag-content">{{ rag.content }}</div>
               <div class="rag-footer">
                 <span class="text-xs" style="color: var(--text-disabled);">注入位置: {{ rag.injection_position }}</span>
-                <el-button size="small" type="danger" plain @click="deleteRag(rag.id)">删除</el-button>
+                <div class="flex gap-2">
+                  <el-button size="small" @click="openRagModal(rag)">编辑</el-button>
+                  <el-button size="small" type="danger" plain @click="handleDeleteRag(rag.id)">删除</el-button>
+                </div>
               </div>
             </el-card>
           </el-col>
@@ -325,7 +334,8 @@
                   <el-tag :type="perm.requires_confirm ? 'warning' : 'success'" size="small">
                     {{ perm.requires_confirm ? '需确认' : '自动执行' }}
                   </el-tag>
-                  <el-button size="small" @click="editPermission(perm)">编辑</el-button>
+                  <el-button size="small" @click="openPermissionModal(perm)">编辑</el-button>
+                  <el-button size="small" type="danger" plain @click="handleDeletePermission(perm.id)">删除</el-button>
                 </div>
               </div>
             </el-card>
@@ -407,12 +417,195 @@
         <el-empty v-if="auditLogs.length === 0" description="暂无审计日志" />
       </el-card>
     </div>
+
+    <!-- Provider Dialog -->
+    <el-dialog v-model="showProviderModal" :title="editingProvider ? '编辑服务商' : '添加服务商'" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="服务商名称" required>
+          <el-input v-model="providerForm.name" placeholder="ollama" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="providerForm.display_name" placeholder="Ollama" />
+        </el-form-item>
+        <el-form-item label="API Base URL">
+          <el-input v-model="providerForm.api_base_url" placeholder="http://localhost:11434" />
+        </el-form-item>
+        <el-form-item label="API Key">
+          <el-input v-model="providerForm.api_key" placeholder="可选" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="providerForm.is_enabled">启用</el-checkbox>
+          <el-checkbox v-model="providerForm.is_primary">主服务商</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeProviderModal">取消</el-button>
+        <el-button type="primary" @click="handleSaveProvider">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Model Dialog -->
+    <el-dialog v-model="showModelModal" :title="editingModel ? '编辑模型' : '添加模型'" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="服务商">
+          <el-select v-model="modelForm.provider_id" class="w-full">
+            <el-option v-for="p in providers" :key="p.id" :label="p.display_name" :value="p.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="模型标识符" required>
+          <el-input v-model="modelForm.model_id" placeholder="llama3" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="modelForm.display_name" placeholder="Llama 3" />
+        </el-form-item>
+        <el-form-item label="模型类型" required>
+          <el-select v-model="modelForm.model_type" class="w-full">
+            <el-option label="Chat" value="chat" />
+            <el-option label="Completion" value="completion" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="上下文窗口">
+          <el-input-number v-model="modelForm.context_window" :min="0" class="w-full" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="modelForm.is_enabled">启用</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeModelModal">取消</el-button>
+        <el-button type="primary" @click="handleSaveModel">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Routing Dialog -->
+    <el-dialog v-model="showRoutingModal" :title="editingRouting ? '编辑路由' : '添加路由'" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="功能标识" required>
+          <el-input v-model="routingForm.feature" placeholder="generate_script" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="routingForm.display_name" placeholder="脚本生成" />
+        </el-form-item>
+        <el-form-item label="主模型">
+          <el-select v-model="routingForm.primary_model_id" placeholder="选择模型" class="w-full">
+            <el-option v-for="m in models" :key="m.id" :label="m.display_name" :value="m.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="routingForm.is_enabled">启用</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeRoutingModal">取消</el-button>
+        <el-button type="primary" @click="handleSaveRouting">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Prompt Template Dialog -->
+    <el-dialog v-model="showPromptModal" :title="editingPrompt ? '编辑模板' : '添加模板'" width="600px">
+      <el-form label-position="top">
+        <el-form-item label="功能标识" required>
+          <el-input v-model="promptForm.feature" placeholder="generate_script" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="promptForm.display_name" placeholder="脚本生成" />
+        </el-form-item>
+        <el-form-item label="系统提示词">
+          <el-input v-model="promptForm.system_prompt" type="textarea" :rows="4" />
+        </el-form-item>
+        <el-form-item label="用户模板">
+          <el-input v-model="promptForm.user_template" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="参数配置">
+          <el-row :gutter="16">
+            <el-col :span="8">
+              <el-form-item label="温度">
+                <el-input-number v-model="promptForm.temperature" :min="0" :max="2" :step="0.1" class="w-full" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="Top P">
+                <el-input-number v-model="promptForm.top_p" :min="0" :max="1" :step="0.1" class="w-full" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="最大Tokens">
+                <el-input-number v-model="promptForm.max_tokens" :min="100" :max="32000" class="w-full" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="promptForm.is_enabled">启用</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closePromptModal">取消</el-button>
+        <el-button type="primary" @click="handleSavePrompt">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- RAG Context Dialog -->
+    <el-dialog v-model="showRagModal" :title="editingRag ? '编辑上下文' : '添加上下文'" width="600px">
+      <el-form label-position="top">
+        <el-form-item label="上下文类型" required>
+          <el-select v-model="ragForm.context_type" class="w-full">
+            <el-option label="代码片段" value="code" />
+            <el-option label="文档" value="doc" />
+            <el-option label="知识库" value="knowledge" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="上下文键" required>
+          <el-input v-model="ragForm.context_key" placeholder="unique_key" />
+        </el-form-item>
+        <el-form-item label="内容" required>
+          <el-input v-model="ragForm.content" type="textarea" :rows="6" />
+        </el-form-item>
+        <el-form-item label="注入位置">
+          <el-select v-model="ragForm.injection_position" class="w-full">
+            <el-option label="系统提示词" value="system" />
+            <el-option label="用户消息" value="user" />
+            <el-option label="上下文" value="context" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="ragForm.is_enabled">启用</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeRagModal">取消</el-button>
+        <el-button type="primary" @click="handleSaveRag">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Permission Dialog -->
+    <el-dialog v-model="showPermissionModal" :title="editingPermission ? '编辑权限' : '添加权限'" width="500px">
+      <el-form label-position="top">
+        <el-form-item label="权限等级" required>
+          <el-input-number v-model="permissionForm.permission_level" :min="1" :max="3" class="w-full" />
+        </el-form-item>
+        <el-form-item label="权限名称" required>
+          <el-input v-model="permissionForm.permission_name" placeholder="完全自主" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="permissionForm.description" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="permissionForm.requires_confirm">需要确认</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closePermissionModal">取消</el-button>
+        <el-button type="primary" @click="handleSavePermission">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import {
   Cpu, Box, Connection, ChatDotRound, Document, Lock,
@@ -446,6 +639,34 @@ const showRoutingModal = ref(false)
 const showPromptModal = ref(false)
 const showRagModal = ref(false)
 const showPermissionModal = ref(false)
+
+// Editing state
+const editingProvider = ref(null)
+const editingModel = ref(null)
+const editingRouting = ref(null)
+const editingPrompt = ref(null)
+const editingRag = ref(null)
+const editingPermission = ref(null)
+
+// Forms
+const providerForm = reactive({
+  name: '', display_name: '', api_base_url: '', api_key: '', is_enabled: true, is_primary: false
+})
+const modelForm = reactive({
+  provider_id: null, model_id: '', display_name: '', model_type: 'chat', context_window: null, is_enabled: true
+})
+const routingForm = reactive({
+  feature: '', display_name: '', primary_model_id: null, is_enabled: true
+})
+const promptForm = reactive({
+  feature: '', display_name: '', system_prompt: '', user_template: '', temperature: 0.7, top_p: 0.9, max_tokens: 2048, context_lines: 100, is_enabled: true
+})
+const ragForm = reactive({
+  context_type: 'code', context_key: '', content: '', injection_position: 'system', is_enabled: true
+})
+const permissionForm = reactive({
+  permission_level: 1, permission_name: '', description: '', requires_confirm: true, is_enabled: true
+})
 
 // Load data
 async function loadProviders() {
@@ -548,30 +769,298 @@ function formatTime(timeStr) {
   return d.toLocaleString('zh-CN')
 }
 
-// Actions
-function editProvider(provider) {
-  console.log('Edit provider:', provider)
+// Provider CRUD
+function openProviderModal(provider = null) {
+  editingProvider.value = provider
+  if (provider) {
+    Object.assign(providerForm, {
+      name: provider.name, display_name: provider.display_name,
+      api_base_url: provider.api_base_url || '', api_key: provider.api_key || '',
+      is_enabled: provider.is_enabled, is_primary: provider.is_primary
+    })
+  } else {
+    Object.assign(providerForm, { name: '', display_name: '', api_base_url: '', api_key: '', is_enabled: true, is_primary: false })
+  }
+  showProviderModal.value = true
 }
 
-function deleteProvider(id) {
-  console.log('Delete provider:', id)
+function closeProviderModal() {
+  showProviderModal.value = false
+  editingProvider.value = null
 }
 
-function editModel(model) {
-  console.log('Edit model:', model)
+async function handleSaveProvider() {
+  try {
+    if (editingProvider.value) {
+      await api.put(`/ai/providers/${editingProvider.value.id}`, providerForm)
+      ElMessage.success('服务商已更新')
+    } else {
+      await api.post('/ai/providers', providerForm)
+      ElMessage.success('服务商已创建')
+    }
+    closeProviderModal()
+    loadProviders()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
 }
 
-function editPromptTemplate(template) {
-  console.log('Edit prompt template:', template)
+async function handleDeleteProvider(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该服务商吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/providers/${id}`)
+    ElMessage.success('已删除')
+    loadProviders()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
 }
 
-function deleteRag(id) {
-  console.log('Delete RAG:', id)
+// Model CRUD
+function openModelModal(model = null) {
+  editingModel.value = model
+  if (model) {
+    Object.assign(modelForm, {
+      provider_id: model.provider_id, model_id: model.model_id,
+      display_name: model.display_name, model_type: model.model_type,
+      context_window: model.context_window, is_enabled: model.is_enabled
+    })
+  } else {
+    Object.assign(modelForm, { provider_id: null, model_id: '', display_name: '', model_type: 'chat', context_window: null, is_enabled: true })
+  }
+  showModelModal.value = true
 }
 
-function editPermission(perm) {
-  console.log('Edit permission:', perm)
+function closeModelModal() {
+  showModelModal.value = false
+  editingModel.value = null
 }
+
+async function handleSaveModel() {
+  try {
+    if (editingModel.value) {
+      await api.put(`/ai/models/${editingModel.value.id}`, modelForm)
+      ElMessage.success('模型已更新')
+    } else {
+      await api.post('/ai/models', modelForm)
+      ElMessage.success('模型已创建')
+    }
+    closeModelModal()
+    loadModels()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleDeleteModel(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该模型吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/models/${id}`)
+    ElMessage.success('已删除')
+    loadModels()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// Routing CRUD
+function openRoutingModal(routing = null) {
+  editingRouting.value = routing
+  if (routing) {
+    Object.assign(routingForm, {
+      feature: routing.feature, display_name: routing.display_name,
+      primary_model_id: routing.primary_model_id, is_enabled: routing.is_enabled
+    })
+  } else {
+    Object.assign(routingForm, { feature: '', display_name: '', primary_model_id: null, is_enabled: true })
+  }
+  showRoutingModal.value = true
+}
+
+function closeRoutingModal() {
+  showRoutingModal.value = false
+  editingRouting.value = null
+}
+
+async function handleSaveRouting() {
+  try {
+    if (editingRouting.value) {
+      await api.put(`/ai/feature-routing/${editingRouting.value.id}`, routingForm)
+      ElMessage.success('路由已更新')
+    } else {
+      await api.post('/ai/feature-routing', routingForm)
+      ElMessage.success('路由已创建')
+    }
+    closeRoutingModal()
+    loadFeatureRouting()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleDeleteRouting(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该路由吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/feature-routing/${id}`)
+    ElMessage.success('已删除')
+    loadFeatureRouting()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// Prompt Template CRUD
+function openPromptModal(template = null) {
+  editingPrompt.value = template
+  if (template) {
+    Object.assign(promptForm, {
+      feature: template.feature, display_name: template.display_name,
+      system_prompt: template.system_prompt || '', user_template: template.user_template || '',
+      temperature: template.temperature, top_p: template.top_p, max_tokens: template.max_tokens,
+      context_lines: template.context_lines, is_enabled: template.is_enabled
+    })
+  } else {
+    Object.assign(promptForm, { feature: '', display_name: '', system_prompt: '', user_template: '', temperature: 0.7, top_p: 0.9, max_tokens: 2048, context_lines: 100, is_enabled: true })
+  }
+  showPromptModal.value = true
+}
+
+function closePromptModal() {
+  showPromptModal.value = false
+  editingPrompt.value = null
+}
+
+async function handleSavePrompt() {
+  try {
+    if (editingPrompt.value) {
+      await api.put(`/ai/prompt-templates/${editingPrompt.value.id}`, promptForm)
+      ElMessage.success('模板已更新')
+    } else {
+      await api.post('/ai/prompt-templates', promptForm)
+      ElMessage.success('模板已创建')
+    }
+    closePromptModal()
+    loadPromptTemplates()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleDeletePrompt(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该模板吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/prompt-templates/${id}`)
+    ElMessage.success('已删除')
+    loadPromptTemplates()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// RAG Context CRUD
+function openRagModal(rag = null) {
+  editingRag.value = rag
+  if (rag) {
+    Object.assign(ragForm, {
+      context_type: rag.context_type, context_key: rag.context_key,
+      content: rag.content, injection_position: rag.injection_position, is_enabled: rag.is_enabled
+    })
+  } else {
+    Object.assign(ragForm, { context_type: 'code', context_key: '', content: '', injection_position: 'system', is_enabled: true })
+  }
+  showRagModal.value = true
+}
+
+function closeRagModal() {
+  showRagModal.value = false
+  editingRag.value = null
+}
+
+async function handleSaveRag() {
+  try {
+    if (editingRag.value) {
+      await api.put(`/ai/rag-context/${editingRag.value.id}`, ragForm)
+      ElMessage.success('上下文已更新')
+    } else {
+      await api.post('/ai/rag-context', ragForm)
+      ElMessage.success('上下文已创建')
+    }
+    closeRagModal()
+    loadRagContexts()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleDeleteRag(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该上下文吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/rag-context/${id}`)
+    ElMessage.success('已删除')
+    loadRagContexts()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// Permission CRUD
+function openPermissionModal(perm = null) {
+  editingPermission.value = perm
+  if (perm) {
+    Object.assign(permissionForm, {
+      permission_level: perm.permission_level, permission_name: perm.permission_name,
+      description: perm.description || '', requires_confirm: perm.requires_confirm, is_enabled: perm.is_enabled
+    })
+  } else {
+    Object.assign(permissionForm, { permission_level: 1, permission_name: '', description: '', requires_confirm: true, is_enabled: true })
+  }
+  showPermissionModal.value = true
+}
+
+function closePermissionModal() {
+  showPermissionModal.value = false
+  editingPermission.value = null
+}
+
+async function handleSavePermission() {
+  try {
+    if (editingPermission.value) {
+      await api.put(`/ai/permissions/${editingPermission.value.id}`, permissionForm)
+      ElMessage.success('权限已更新')
+    } else {
+      await api.post('/ai/permissions', permissionForm)
+      ElMessage.success('权限已创建')
+    }
+    closePermissionModal()
+    loadPermissions()
+  } catch (e) {
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleDeletePermission(id) {
+  try {
+    await ElMessageBox.confirm('确定删除该权限吗？', '提示', { type: 'warning' })
+    await api.delete(`/ai/permissions/${id}`)
+    ElMessage.success('已删除')
+    loadPermissions()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+// Alias for compatibility
+const editProvider = openProviderModal
+const deleteProvider = handleDeleteProvider
+const editModel = openModelModal
+const deleteModel = handleDeleteModel
+const editRouting = openRoutingModal
+const deleteRouting = handleDeleteRouting
+const editPromptTemplate = openPromptModal
+const deletePromptTemplate = handleDeletePrompt
+const deleteRagContext = handleDeleteRag
+const editPermission = openPermissionModal
+const deletePermission = handleDeletePermission
 
 onMounted(() => {
   loadProviders()
@@ -657,11 +1146,13 @@ onMounted(() => {
 }
 
 .provider-actions,
+.routing-actions,
 .rag-footer,
 .perm-status {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .rag-content {
