@@ -9,9 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.15",
+    "@guolao/vue-monaco-editor": "^1.6.0",
+    "@heroicons/vue": "^2.2.0",
     "axios": "^1.6.5",
-    "cron-parser": "^4.9.0"
+    "cron-parser": "^4.9.0",
+    "vue": "^3.4.15",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.3",
