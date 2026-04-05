@@ -90,7 +90,7 @@ def list_tasks(db: Session = Depends(get_db)):
 def get_tasks_timeline(db: Session = Depends(get_db)):
     """Get task execution history for timeline visualization (last 24 hours)"""
     from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    cutoff = datetime.now() - timedelta(hours=24)
 
     logs = db.query(Log).filter(Log.start_time >= cutoff).order_by(Log.start_time.desc()).all()
     tasks = db.query(Task).all()

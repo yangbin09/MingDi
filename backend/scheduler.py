@@ -92,7 +92,7 @@ def run_task(task_id: int):
 
         log_entry = Log(
             task_id=task_id,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(),
             output="",
             exit_code=None,
         )
@@ -152,7 +152,7 @@ def run_task(task_id: int):
                 task.status = "failed"
                 send_webhook_alert(task.name, "failed", f"Exit code: {exit_code}\n{output[:500]}")
 
-        log_entry.end_time = datetime.utcnow()
+        log_entry.end_time = datetime.now()
         log_entry.output = output
         log_entry.exit_code = exit_code
         task.last_run_time = log_entry.start_time
