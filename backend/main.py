@@ -481,6 +481,37 @@ def get_task_logs(task_id: int, db: Session = Depends(get_db)):
     return logs
 
 
+@app.get("/logs/search")
+def search_logs(
+    keyword: Optional[str] = None,
+    task_id: Optional[int] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    exit_code: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Search logs with filters"""
+    query = db.query(Log)
+
+    if task_id:
+        query = query.filter(Log.task_id == task_id)
+    if exit_code is not None:
+        query = query.filter(Log.exit_code == exit_code)
+    if start_date:
+        query = query.filter(Log.start_time >= start_date)
+    if end_date:
+        query = query.filter(Log.start_time <= end_date)
+
+    logs = query.order_by(Log.start_time.desc()).limit(100).all()
+
+    # Filter by keyword in memory (for partial matching)
+    if keyword:
+        keyword = keyword.lower()
+        logs = [l for l in logs if keyword in (l.output or "").lower()]
+
+    return logs
+
+
 @app.get("/logs/{log_id}", response_model=LogResponse)
 def get_log(log_id: int, db: Session = Depends(get_db)):
     log = db.query(Log).filter(Log.id == log_id).first()
@@ -523,38 +554,6 @@ def stream_logs(task_id: int):
             await asyncio.sleep(1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-
-# Advanced log search
-@app.get("/logs/search")
-def search_logs(
-    keyword: Optional[str] = None,
-    task_id: Optional[int] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    exit_code: Optional[int] = None,
-    db: Session = Depends(get_db)
-):
-    """Search logs with filters"""
-    query = db.query(Log)
-
-    if task_id:
-        query = query.filter(Log.task_id == task_id)
-    if exit_code is not None:
-        query = query.filter(Log.exit_code == exit_code)
-    if start_date:
-        query = query.filter(Log.start_time >= start_date)
-    if end_date:
-        query = query.filter(Log.start_time <= end_date)
-
-    logs = query.order_by(Log.start_time.desc()).limit(100).all()
-
-    # Filter by keyword in memory (for partial matching)
-    if keyword:
-        keyword = keyword.lower()
-        logs = [l for l in logs if keyword in (l.output or "").lower()]
-
-    return logs
 
 
 @app.get("/logs/{log_id}/download")

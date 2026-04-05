@@ -389,7 +389,7 @@ async function fetchLogs() {
     // Build search params
     const params = {}
     if (filters.value.taskId) params.task_id = filters.value.taskId
-    if (filters.value.exitCode !== null) params.exit_code = filters.value.exitCode
+    if (filters.value.exitCode !== null && filters.value.exitCode !== '') params.exit_code = filters.value.exitCode
     if (filters.value.startDate) params.start_date = filters.value.startDate
     if (filters.value.endDate) params.end_date = filters.value.endDate
     if (filters.value.keyword) params.keyword = filters.value.keyword

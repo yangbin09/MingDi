@@ -53,7 +53,10 @@ apiClient.interceptors.response.use(
 export const taskApi = {
   list: () => apiClient.get('/tasks'),
   get: (id) => apiClient.get(`/tasks/${id}`),
-  create: (data) => apiClient.post('/tasks', data),
+  create: (data) => {
+    console.log('taskApi.create called with', JSON.stringify(data))
+    return apiClient.post('/tasks', data)
+  },
   update: (id, data) => apiClient.put(`/tasks/${id}`, data),
   delete: (id) => apiClient.delete(`/tasks/${id}`),
   run: (id) => apiClient.post(`/tasks/${id}/run`),

@@ -734,7 +734,7 @@ import {
   ClipboardDocumentIcon, CubeIcon
 } from '@heroicons/vue/24/outline'
 import { taskApi, aiApi, scriptApi } from '../utils/api.js'
-import { formatTimeFull, cronHumanText as formatCronHuman, statusText } from '../utils/formatters.js'
+import { formatTimeFull, cronHumanText, statusText } from '../utils/formatters.js'
 
 const tasks = ref([])
 const showDrawer = ref(false)
@@ -745,6 +745,8 @@ const currentTask = ref(null)
 // AI state
 const aiDescription = ref('')
 const aiGenerating = ref(false)
+const aiReviewing = ref(false)
+const aiReviewResult = ref('')
 const aiGeneratedDoc = ref('')
 const aiDocGenerating = ref(false)
 const nlpCronInput = ref('')
@@ -1019,6 +1021,7 @@ async function saveNodeFlow() {
 // ========== Main Functions ==========
 
 function openCreateDrawer() {
+  console.log('openCreateDrawer called')
   isEditing.value = false
   resetForm()
   showDrawer.value = true
@@ -1082,10 +1085,11 @@ function resetForm() {
 }
 
 async function submitForm() {
+  console.log('submitForm called', { form: form.name, script_path: form.script_path })
   try {
     const payload = {
       name: form.name,
-      script_path: form.script_path || form.script_content ? './scripts/task_' + Date.now() + '.py' : form.script_path,
+      script_path: (form.script_path && form.script_path.trim()) ? form.script_path : './scripts/task_' + Date.now() + '.py',
       cron_expr: form.cron_expr || null,
       is_active: form.is_active,
       interpreter_path: form.interpreter_path || null,
@@ -1120,7 +1124,10 @@ async function submitForm() {
     }
     closeDrawer()
     fetchTasks()
-  } catch (e) { alert('操作失败: ' + (e.response?.data?.detail || e.message)) }
+  } catch (e) {
+    console.error('submitForm error', e)
+    alert('操作失败: ' + (e.response?.data?.detail || e.message))
+  }
 }
 
 async function toggleTask(task) {

@@ -358,6 +358,9 @@ async function generateScript() {
   aiGenerating.value = true
   try {
     const res = await aiApi.generateScript(scriptPrompt.value)
+    if (!res.data.used_ai) {
+      alert('⚠️ AI服务未配置\n\n请前往「系统设置」→「AI设置」配置 MINIMAX_API_KEY')
+    }
     generatedScript.value = res.data.code
   } catch (e) {
     alert('生成失败: ' + (e.response?.data?.detail || e.message))
@@ -380,6 +383,9 @@ async function convertCron() {
   aiCronConverting.value = true
   try {
     const res = await aiApi.nlpToCron(cronPrompt.value)
+    if (!res.data.used_ai) {
+      alert('⚠️ AI服务未配置\n\n请前往「系统设置」→「AI设置」配置 MINIMAX_API_KEY')
+    }
     cronResult.value = {
       expr: res.data.cron_expr,
       description: res.data.description
@@ -407,6 +413,9 @@ async function reviewCodeFn() {
   aiReviewing.value = true
   try {
     const res = await aiApi.codeReview(reviewCode.value)
+    if (!res.data.used_ai) {
+      alert('⚠️ AI服务未配置\n\n请前往「系统设置」→「AI设置」配置 MINIMAX_API_KEY')
+    }
     reviewResult.value = res.data.review
   } catch (e) {
     alert('审查失败: ' + (e.response?.data?.detail || e.message))
@@ -420,6 +429,9 @@ async function diagnoseError() {
   aiDiagnosing.value = true
   try {
     const res = await aiApi.diagnoseError(errorInput.value, errorCode.value)
+    if (!res.data.used_ai) {
+      alert('⚠️ AI服务未配置\n\n请前往「系统设置」→「AI设置」配置 MINIMAX_API_KEY')
+    }
     diagnosisResult.value = res.data.diagnosis
   } catch (e) {
     alert('诊断失败: ' + (e.response?.data?.detail || e.message))
@@ -433,6 +445,9 @@ async function summarizeLog() {
   aiSummarizing.value = true
   try {
     const res = await aiApi.summarizeLog(logInput.value)
+    if (!res.data.used_ai) {
+      alert('⚠️ AI服务未配置\n\n请前往「系统设置」→「AI设置」配置 MINIMAX_API_KEY')
+    }
     logSummary.value = res.data.summary
   } catch (e) {
     alert('摘要生成失败: ' + (e.response?.data?.detail || e.message))

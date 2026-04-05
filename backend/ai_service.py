@@ -221,12 +221,12 @@ class AIService:
     def _fallback_response(self, task_type: str, input_data: str) -> str:
         """Fallback response when AI is not available"""
         fallbacks = {
-            "generate_script": "# AI服务未配置，请配置MINIMAX_API_KEY环境变量",
-            "diagnose_error": "# AI诊断服务未配置，请检查错误信息",
-            "code_review": "# AI审查服务未配置",
+            "generate_script": "⚠️ AI服务未配置\n\n请在「系统设置」→「AI设置」中配置 MINIMAX_API_KEY 后重试",
+            "diagnose_error": "⚠️ AI诊断服务未配置\n\n当前错误：\n" + input_data[:500] + "\n\n请在「系统设置」→「AI设置」中配置 MINIMAX_API_KEY 后重试",
+            "code_review": "⚠️ AI审查服务未配置\n\n请在「系统设置」→「AI设置」中配置 MINIMAX_API_KEY 后重试",
             "nlp_to_cron": "* * * * *",
-            "summarize_log": "# AI摘要服务未配置",
-            "generate_doc": "# AI文档生成需要配置API Key",
+            "summarize_log": "⚠️ AI摘要服务未配置\n\n请在「系统设置」→「AI设置」中配置 MINIMAX_API_KEY 后重试",
+            "generate_doc": "⚠️ AI文档生成需要配置API Key\n\n请在「系统设置」→「AI设置」中配置 MINIMAX_API_KEY 后重试",
             "humanize_alert": "报告！系统遇到了点麻烦，请检查日志",
         }
         return fallbacks.get(task_type, "未知任务类型")
