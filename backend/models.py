@@ -20,8 +20,8 @@ class Task(Base):
     status = Column(String(50), default="idle")  # idle, running, success, failed, timeout
     last_run_time = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     # New fields for Phase 3
     interpreter_path = Column(String(512), nullable=True)  # Python interpreter/venv path
     depends_on = Column(Integer, nullable=True)  # Task ID this task depends on (DAG)
@@ -38,8 +38,8 @@ class EnvVar(Base):
     value = Column(Text, nullable=False)
     description = Column(String(512), nullable=True)
     is_secret = Column(Boolean, default=False)  # Hide value in UI
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class AlertConfig(Base):
@@ -50,8 +50,8 @@ class AlertConfig(Base):
     webhook_url = Column(String(1024), nullable=False)
     events = Column(String(255), default="failed,timeout")  # Comma-separated events
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class Log(Base):

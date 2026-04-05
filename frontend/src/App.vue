@@ -1,19 +1,23 @@
 <template>
-  <div class="flex h-screen bg-gray-950 text-gray-100 noise-overlay">
+  <div class="flex h-screen theme-transition" style="background-color: var(--bg-primary);">
     <!-- Sidebar -->
-    <aside class="w-64 bg-gray-900 border-r border-gray-700/50 flex flex-col relative">
-      <!-- Subtle gradient overlay -->
-      <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/5 via-transparent to-emerald-500/3 pointer-events-none"></div>
-
+    <aside
+      class="w-64 flex flex-col relative theme-transition"
+      :style="{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }"
+    >
       <!-- Breathing glow effect when tasks running -->
-      <div v-if="hasRunningTasks" class="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-emerald-500/5 animate-pulse-soft pointer-events-none"></div>
+      <div
+        v-if="hasRunningTasks"
+        class="absolute inset-0 animate-pulse-soft pointer-events-none"
+        :style="{ background: 'linear-gradient(90deg, var(--color-primary-subtle), transparent)' }"
+      ></div>
 
       <!-- Logo -->
-      <div class="p-6 border-b border-gray-700/50 relative z-10">
+      <div class="p-6 relative z-10 theme-transition" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
         <h1 class="text-xl font-bold tracking-tight">
-          <span class="text-indigo-400">Py</span>Cron<span class="text-indigo-400">Master</span>
+          <span style="color: var(--color-primary);">Py</span>Cron<span style="color: var(--color-primary);">Master</span>
         </h1>
-        <p class="text-xs text-gray-500 mt-1.5 tracking-wide">脚本定时管理平台</p>
+        <p class="text-xs mt-1.5 tracking-wide" style="color: var(--text-muted);">脚本定时管理平台</p>
       </div>
 
       <!-- Navigation -->
@@ -23,25 +27,45 @@
             <router-link
               :to="item.path"
               class="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group"
-              :class="[$route.path === item.path
-                ? 'bg-indigo-500/10 text-indigo-400 border-l-2 border-indigo-500 -ml-[2px] pl-[18px]'
-                : 'text-gray-400 hover:bg-gray-800/80 hover:text-gray-200 border-l-2 border-transparent']"
+              :style="$route.path === item.path
+                ? {
+                    backgroundColor: 'var(--color-primary-subtle)',
+                    color: 'var(--color-primary)',
+                    borderLeft: '2px solid var(--color-primary)',
+                    paddingLeft: '16px'
+                  }
+                : {
+                    color: 'var(--text-muted)',
+                    borderLeft: '2px solid transparent'
+                  }"
             >
-              <component :is="item.icon" class="w-5 h-5 transition-transform group-hover:scale-110" />
+              <component
+                :is="item.icon"
+                class="w-5 h-5 transition-transform group-hover:scale-110"
+              />
               <span class="font-medium">{{ item.label }}</span>
               <span v-if="item.path === '/' && runningTaskCount > 0" class="ml-auto flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span
+                  class="animate-ping absolute inline-flex h-2 w-2 rounded-full opacity-75"
+                  :style="{ backgroundColor: 'var(--color-primary)' }"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2 w-2"
+                  :style="{ backgroundColor: 'var(--color-primary)' }"
+                ></span>
               </span>
             </router-link>
           </li>
         </ul>
 
         <!-- Quick Scratchpad Button -->
-        <div class="mt-6 pt-6 border-t border-gray-700/50">
+        <div class="mt-6 pt-6" :style="{ borderTop: '1px solid var(--border-subtle)' }">
           <button
             @click="showScratchpad = true"
-            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-gray-400 hover:bg-purple-500/10 hover:text-purple-400 group border border-transparent hover:border-purple-500/20"
+            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group"
+            :style="{ color: 'var(--text-muted)' }"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)', $event.currentTarget.style.color = 'var(--text-main)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent', $event.currentTarget.style.color = 'var(--text-muted)')"
           >
             <CodeBracketIcon class="w-5 h-5" />
             <span class="font-medium">快速执行代码</span>
@@ -50,18 +74,25 @@
       </nav>
 
       <!-- Sidebar Footer -->
-      <div class="p-4 border-t border-gray-700/50 relative z-10">
+      <div class="p-4 relative z-10 theme-transition" :style="{ borderTop: '1px solid var(--border-subtle)' }">
         <div class="flex items-center justify-between text-xs">
           <div class="space-y-1">
-            <p class="text-gray-500">
-              Backend: <span :class="backendOnline ? 'text-emerald-400' : 'text-rose-400'">{{ backendOnline ? 'Online' : 'Offline' }}</span>
+            <p :style="{ color: 'var(--text-muted)' }">
+              Backend: <span :style="{ color: backendOnline ? 'var(--color-success)' : 'var(--color-danger)' }">{{ backendOnline ? 'Online' : 'Offline' }}</span>
             </p>
-            <p class="text-gray-600">v1.0.0</p>
+            <p :style="{ color: 'var(--text-disabled)' }">v1.0.0</p>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="relative flex h-2 w-2">
-              <span v-if="backendOnline" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span :class="backendOnline ? 'bg-emerald-500' : 'bg-rose-500'" class="relative inline-flex rounded-full h-2 w-2 shadow-softer"></span>
+              <span
+                v-if="backendOnline"
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                :style="{ backgroundColor: 'var(--color-success)' }"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-2 w-2"
+                :style="{ backgroundColor: backendOnline ? 'var(--color-success)' : 'var(--color-danger)' }"
+              ></span>
             </span>
           </div>
         </div>
@@ -71,16 +102,28 @@
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Header -->
-      <header class="h-16 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700/50 flex items-center justify-between px-6 sticky top-0 z-20">
+      <header
+        class="h-14 flex items-center justify-between px-6 sticky top-0 z-20 backdrop-blur-sm theme-transition"
+        :style="{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }"
+      >
         <div class="flex items-center gap-3">
-          <div class="h-1 w-8 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full"></div>
-          <span class="text-sm font-medium text-gray-300">{{ pageTitle }}</span>
+          <div
+            class="h-1 w-8 rounded-full"
+            :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }"
+          ></div>
+          <span class="text-sm font-medium" :style="{ color: 'var(--text-muted)' }">{{ pageTitle }}</span>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Theme Switcher -->
+          <ThemeSwitcher @change="onThemeChange" />
+
           <button
             @click="refreshData"
-            class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800 rounded-lg transition-all duration-200"
+            class="p-2 rounded-lg transition-colors"
+            :style="{ color: 'var(--text-muted)' }"
             title="刷新数据"
+            @mouseenter="($event.currentTarget.style.color = 'var(--text-main)', $event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+            @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
           >
             <ArrowPathIcon class="w-5 h-5" :class="{'animate-spin': refreshing}" />
           </button>
@@ -88,7 +131,10 @@
       </header>
 
       <!-- Page Content -->
-      <main class="flex-1 overflow-auto p-6 bg-gradient-to-b from-gray-950 to-gray-900/50">
+      <main
+        class="flex-1 overflow-auto p-6 theme-transition"
+        :style="{ backgroundColor: 'var(--bg-primary)' }"
+      >
         <router-view @openScratchpad="showScratchpad = true" />
       </main>
     </div>
@@ -99,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import {
   ChartBarIcon,
@@ -108,6 +154,7 @@ import {
   ArrowPathIcon,
   CodeBracketIcon
 } from '@heroicons/vue/24/outline'
+import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import Scratchpad from './components/Scratchpad.vue'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
@@ -118,9 +165,9 @@ const runningTaskCount = ref(0)
 const showScratchpad = ref(false)
 
 const navItems = [
-  { path: '/', name: 'Dashboard', label: '仪表盘', icon: markRaw(ChartBarIcon) },
-  { path: '/tasks', name: 'Tasks', label: '任务管理', icon: markRaw(ListBulletIcon) },
-  { path: '/settings', name: 'Settings', label: '系统设置', icon: markRaw(Cog6ToothIcon) },
+  { path: '/', name: 'Dashboard', label: '仪表盘', icon: ChartBarIcon },
+  { path: '/tasks', name: 'Tasks', label: '任务管理', icon: ListBulletIcon },
+  { path: '/settings', name: 'Settings', label: '系统设置', icon: Cog6ToothIcon },
 ]
 
 const pageTitle = computed(() => {
@@ -129,6 +176,10 @@ const pageTitle = computed(() => {
 })
 
 const hasRunningTasks = computed(() => runningTaskCount.value > 0)
+
+function onThemeChange(themeId) {
+  console.log('Theme changed to:', themeId)
+}
 
 async function checkBackend() {
   try {
@@ -171,5 +222,10 @@ onUnmounted(() => {
 <style scoped>
 .animate-pulse-soft {
   animation: pulse-soft 3s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.08; }
 }
 </style>

@@ -3,12 +3,15 @@
     <!-- Header Actions -->
     <div class="flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <div class="h-1 w-8 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full"></div>
-        <span class="text-sm text-gray-500">共 <span class="text-gray-300 font-medium">{{ tasks.length }}</span> 个任务</span>
+        <div class="h-1 w-8 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }"></div>
+        <span class="text-sm" style="color: var(--text-muted);">共 <span style="color: var(--text-main); font-weight: 500;">{{ tasks.length }}</span> 个任务</span>
       </div>
       <button
         @click="openCreateDrawer"
-        class="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 shadow-soft hover:shadow-indigo-glow"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200"
+        :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
+        @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')"
+        @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
       >
         <PlusIcon class="w-5 h-5" />
         新建任务
@@ -16,51 +19,58 @@
     </div>
 
     <!-- Tasks Table -->
-    <div class="bg-gray-900/80 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
-      <div v-if="tasks.length === 0" class="text-center text-gray-500 py-20">
-        <div class="w-20 h-20 mx-auto mb-4 bg-gray-800/50 rounded-full flex items-center justify-center">
-          <InboxIcon class="w-10 h-10 opacity-50" />
+    <div class="card rounded-xl overflow-hidden theme-transition">
+      <div v-if="tasks.length === 0" class="text-center py-20">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+          <InboxIcon class="w-10 h-10" style="color: var(--text-muted); opacity: 0.5;" />
         </div>
-        <p class="text-lg">暂无任务</p>
-        <p class="text-sm mt-1 text-gray-600">点击右上角按钮创建第一个任务</p>
+        <p class="text-lg" style="color: var(--text-muted);">暂无任务</p>
+        <p class="text-sm mt-1" style="color: var(--text-disabled);">点击右上角按钮创建第一个任务</p>
       </div>
 
       <table v-else class="w-full">
-        <thead class="bg-gray-800/50">
+        <thead :style="{ backgroundColor: 'var(--bg-tertiary)' }">
           <tr>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-12">
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-12" style="color: var(--text-muted);">
               <span class="relative flex h-3 w-3 justify-center">
-                <span v-if="runningCount > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span v-if="runningCount > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :style="{ backgroundColor: 'var(--color-primary)' }"></span>
               </span>
             </th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">任务</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">依赖</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-36">定时</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">启用</th>
-            <th class="px-4 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-48">操作</th>
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">任务</th>
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">依赖</th>
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-36" style="color: var(--text-muted);">定时</th>
+            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-24" style="color: var(--text-muted);">启用</th>
+            <th class="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider w-48" style="color: var(--text-muted);">操作</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-700/50">
+        <tbody style="borderTop: '1px solid var(--border-subtle)'">
           <tr
             v-for="task in tasks"
             :key="task.id"
-            class="hover:bg-gray-800/30 transition-all duration-200"
-            :class="{ 'bg-indigo-500/5': task.status === 'running' }"
+            class="theme-transition"
+            :style="{
+              backgroundColor: task.status === 'running' ? 'var(--color-primary-subtle)' : 'transparent',
+              borderBottom: '1px solid var(--border-subtle)'
+            }"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = task.status === 'running' ? 'var(--color-primary-subtle)' : 'transparent')"
           >
-            <!-- Status with breathing effect -->
+            <!-- Status -->
             <td class="px-4 py-4">
               <span class="relative flex h-3 w-3">
                 <span
                   v-if="task.status === 'running'"
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                  :style="{ backgroundColor: 'var(--color-primary)' }"
                 ></span>
                 <span
                   class="relative inline-flex rounded-full h-3 w-3"
-                  :class="{
-                    'bg-emerald-500 shadow-emerald-glow': task.status === 'running' || task.status === 'success',
-                    'bg-rose-500 shadow-rose-glow': task.status === 'failed',
-                    'bg-yellow-500': task.status === 'timeout',
-                    'bg-gray-600': task.status === 'idle'
+                  :style="{
+                    backgroundColor:
+                      task.status === 'running' || task.status === 'success' ? 'var(--color-primary)' :
+                      task.status === 'failed' ? 'var(--color-danger)' :
+                      task.status === 'timeout' ? 'var(--color-warning)' :
+                      'var(--text-muted)'
                   }"
                 ></span>
               </span>
@@ -68,10 +78,14 @@
 
             <!-- Task Info -->
             <td class="px-4 py-4">
-              <div class="font-medium text-gray-200">{{ task.name }}</div>
-              <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+              <div class="font-medium" style="color: var(--text-main);">{{ task.name }}</div>
+              <div class="text-xs mt-0.5 flex items-center gap-2" style="color: var(--text-muted);">
                 <span class="font-mono">{{ task.script_path }}</span>
-                <span v-if="task.interpreter_path" class="text-xs px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <span
+                  v-if="task.interpreter_path"
+                  class="text-xs px-1.5 py-0.5 rounded"
+                  :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--color-purple)' }"
+                >
                   {{ task.interpreter_path.split('/').pop().split('\\').pop() }}
                 </span>
               </div>
@@ -79,16 +93,23 @@
 
             <!-- Dependency -->
             <td class="px-4 py-4">
-              <span v-if="task.depends_on" class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+              <span
+                v-if="task.depends_on"
+                class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                :style="{ backgroundColor: 'var(--color-warning-subtle)', color: 'var(--color-warning)' }"
+              >
                 <ArrowRightIcon class="w-3 h-3" />
                 {{ getTaskName(task.depends_on) }}
               </span>
-              <span v-else class="text-gray-600 text-sm">-</span>
+              <span v-else class="text-sm" style="color: var(--text-disabled);">-</span>
             </td>
 
             <!-- Cron -->
             <td class="px-4 py-4">
-              <code class="text-xs bg-gray-800 px-2.5 py-1.5 rounded-lg text-indigo-400 font-mono border border-gray-700/50">{{ task.cron_expr || '-' }}</code>
+              <code
+                class="text-xs px-2.5 py-1.5 rounded-lg font-mono"
+                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-primary)', border: '1px solid var(--border-subtle)' }"
+              >{{ task.cron_expr || '-' }}</code>
             </td>
 
             <!-- Toggle -->
@@ -96,11 +117,16 @@
               <button
                 @click="toggleTask(task)"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300"
-                :class="task.is_active ? 'bg-emerald-500/20 border border-emerald-500/50' : 'bg-gray-700/50 border border-gray-600'"
+                :style="task.is_active
+                  ? { backgroundColor: 'var(--color-success-subtle)', border: '1px solid var(--color-success)' }
+                  : { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }"
               >
                 <span
-                  class="inline-block h-4 w-4 transform rounded-full transition-all duration-300 shadow-soft"
-                  :class="task.is_active ? 'translate-x-6 bg-emerald-400' : 'translate-x-1 bg-gray-400'"
+                  class="inline-block h-4 w-4 transform rounded-full transition-all duration-300"
+                  :style="{
+                    backgroundColor: task.is_active ? 'var(--color-success)' : 'var(--text-muted)',
+                    transform: task.is_active ? 'translateX(22px)' : 'translateX(2px)'
+                  }"
                 />
               </button>
             </td>
@@ -111,29 +137,42 @@
                 <button
                   @click="runTask(task)"
                   :disabled="task.status === 'running'"
-                  class="p-2 text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all duration-200 disabled:opacity-40"
+                  class="p-2 rounded-lg transition-colors"
+                  :style="{ color: 'var(--text-muted)' }"
+                  :class="{ 'opacity-40': task.status === 'running' }"
                   title="立即运行"
+                  @mouseenter="($event.currentTarget.style.color = 'var(--color-success)', $event.currentTarget.style.backgroundColor = 'var(--color-success-subtle)')"
+                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
                 >
                   <PlayIcon class="w-4 h-4" />
                 </button>
                 <button
                   @click="openLogDrawer(task)"
-                  class="p-2 text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all duration-200"
+                  class="p-2 rounded-lg transition-colors"
+                  :style="{ color: 'var(--text-muted)' }"
                   title="查看日志"
+                  @mouseenter="($event.currentTarget.style.color = 'var(--color-primary)', $event.currentTarget.style.backgroundColor = 'var(--color-primary-subtle)')"
+                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
                 >
                   <CommandLineIcon class="w-4 h-4" />
                 </button>
                 <button
                   @click="openEditDrawer(task)"
-                  class="p-2 text-gray-500 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all duration-200"
+                  class="p-2 rounded-lg transition-colors"
+                  :style="{ color: 'var(--text-muted)' }"
                   title="编辑"
+                  @mouseenter="($event.currentTarget.style.color = 'var(--color-warning)', $event.currentTarget.style.backgroundColor = 'var(--color-warning-subtle)')"
+                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
                 >
                   <PencilIcon class="w-4 h-4" />
                 </button>
                 <button
                   @click="deleteTask(task)"
-                  class="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200"
+                  class="p-2 rounded-lg transition-colors"
+                  :style="{ color: 'var(--text-muted)' }"
                   title="删除"
+                  @mouseenter="($event.currentTarget.style.color = 'var(--color-danger)', $event.currentTarget.style.backgroundColor = 'var(--color-danger-subtle)')"
+                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
                 >
                   <TrashIcon class="w-4 h-4" />
                 </button>
@@ -147,46 +186,52 @@
 
   <!-- Task Drawer -->
   <div v-if="showDrawer" class="fixed inset-0 z-50 overflow-hidden">
-    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="closeDrawer"></div>
+    <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }" @click="closeDrawer"></div>
     <div
-      class="absolute right-0 top-0 h-full w-full max-w-xl bg-gray-900 border-l border-gray-700/50 transform transition-transform duration-300 ease-out"
-      :class="showDrawer ? 'translate-x-0' : 'translate-x-full'"
+      class="absolute right-0 top-0 h-full w-full max-w-xl theme-transition"
+      :style="{ backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-subtle)' }"
     >
-      <div class="flex items-center justify-between p-5 border-b border-gray-700/50">
+      <div class="flex items-center justify-between p-5" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
         <div class="flex items-center gap-3">
-          <div class="h-1 w-6 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full"></div>
-          <h2 class="text-lg font-semibold text-gray-100">{{ isEditing ? '编辑任务' : '新建任务' }}</h2>
+          <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }"></div>
+          <h2 class="text-lg font-semibold" style="color: var(--text-main);">{{ isEditing ? '编辑任务' : '新建任务' }}</h2>
         </div>
-        <button @click="closeDrawer" class="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-          <XMarkIcon class="w-5 h-5 text-gray-400" />
+        <button
+          @click="closeDrawer"
+          class="p-2 rounded-lg transition-colors"
+          :style="{ color: 'var(--text-muted)' }"
+          @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+          @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
+        >
+          <XMarkIcon class="w-5 h-5" />
         </button>
       </div>
 
-      <div class="p-5 overflow-y-auto h-[calc(100vh-73px)]">
+      <div class="p-5 overflow-y-auto" :style="{ height: 'calc(100vh - 73px)' }">
         <form @submit.prevent="submitForm" class="space-y-6">
           <!-- Task Name -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">任务名称</label>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">任务名称</label>
             <input
               v-model="form.name"
               type="text"
               required
-              class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+              class="input"
               placeholder="输入任务名称"
             />
           </div>
 
           <!-- Script Mode -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">脚本来源</label>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">脚本来源</label>
             <div class="flex gap-4 mb-3">
-              <label class="flex items-center gap-2 cursor-pointer group">
-                <input type="radio" v-model="scriptMode" value="path" class="accent-indigo-500" />
-                <span class="text-sm text-gray-400 group-hover:text-gray-200 transition-colors">服务器路径</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" v-model="scriptMode" value="path" class="accent-" :style="{ accentColor: 'var(--color-primary)' }" />
+                <span class="text-sm" style="color: var(--text-main);">服务器路径</span>
               </label>
-              <label class="flex items-center gap-2 cursor-pointer group">
-                <input type="radio" v-model="scriptMode" value="editor" class="accent-indigo-500" />
-                <span class="text-sm text-gray-400 group-hover:text-gray-200 transition-colors">在线编辑</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="radio" v-model="scriptMode" value="editor" class="" :style="{ accentColor: 'var(--color-primary)' }" />
+                <span class="text-sm" style="color: var(--text-main);">在线编辑</span>
               </label>
             </div>
 
@@ -195,14 +240,17 @@
                 v-model="form.script_path"
                 type="text"
                 required
-                class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                class="input font-mono text-sm"
                 placeholder="./scripts/my_script.py"
               />
             </div>
-            <div v-else class="border border-gray-700/50 rounded-lg overflow-hidden">
-              <div class="bg-gray-800/80 px-3 py-2 text-xs text-gray-400 border-b border-gray-700/50 flex items-center justify-between">
+            <div v-else class="rounded-lg overflow-hidden" :style="{ border: '1px solid var(--border-subtle)' }">
+              <div
+                class="px-3 py-2 text-xs flex items-center justify-between"
+                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }"
+              >
                 <span>Python Editor</span>
-                <span class="text-indigo-400">Python 3</span>
+                <span style="color: var(--color-primary);">Python 3</span>
               </div>
               <vue-monaco-editor
                 v-model:value="form.script_content"
@@ -223,27 +271,26 @@
             </div>
           </div>
 
-          <!-- Interpreter Path (venv) -->
+          <!-- Interpreter Path -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">
-              Python 解释器
-              <span class="text-xs text-gray-500">(可选)</span>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">
+              Python 解释器 <span class="text-xs" style="color: var(--text-disabled);">(可选)</span>
             </label>
             <div class="relative">
               <input
                 v-model="form.interpreter_path"
                 type="text"
-                class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+                class="input font-mono text-sm pr-12"
                 placeholder="/usr/bin/python3"
               />
-              <span v-if="form.interpreter_path" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">venv</span>
+              <span v-if="form.interpreter_path" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded" :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--color-purple)' }">venv</span>
             </div>
-            <p class="text-xs text-gray-500 mt-1">指定任务执行的 Python 解释器路径</p>
+            <p class="text-xs mt-1" style="color: var(--text-disabled);">指定任务执行的 Python 解释器路径</p>
           </div>
 
           <!-- Cron Expression -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">定时执行</label>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">定时执行</label>
             <div class="grid grid-cols-4 gap-2 mb-3">
               <button
                 type="button"
@@ -251,9 +298,9 @@
                 :key="preset.value"
                 @click="form.cron_expr = preset.value"
                 class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
-                :class="form.cron_expr === preset.value
-                  ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
-                  : 'border-gray-700/50 text-gray-400 hover:border-gray-600'"
+                :style="form.cron_expr === preset.value
+                  ? { borderColor: 'var(--color-primary)', backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }
+                  : { borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }"
               >
                 {{ preset.label }}
               </button>
@@ -261,52 +308,48 @@
             <input
               v-model="form.cron_expr"
               type="text"
-              class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono"
+              class="input font-mono"
               placeholder="* * * * *"
             />
-            <p class="text-xs text-gray-500 mt-2" v-if="form.cron_expr">{{ cronHumanText(form.cron_expr) }}</p>
+            <p class="text-xs mt-2" v-if="form.cron_expr" style="color: var(--text-muted);">{{ cronHumanText(form.cron_expr) }}</p>
           </div>
 
           <!-- Task Dependency -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">
-              前置任务依赖
-              <span class="text-xs text-gray-500">(可选)</span>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">
+              前置任务依赖 <span class="text-xs" style="color: var(--text-disabled);">(可选)</span>
             </label>
-            <select
-              v-model="form.depends_on"
-              class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-            >
+            <select v-model="form.depends_on" class="input">
               <option :value="null">无依赖</option>
               <option v-for="t in availableDependencies" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">前置任务成功执行后，自动触发此任务</p>
+            <p class="text-xs mt-1" style="color: var(--text-disabled);">前置任务成功执行后，自动触发此任务</p>
           </div>
 
           <!-- Timeout -->
           <div>
-            <label class="block text-sm font-medium text-gray-400 mb-2">超时时间 (秒)</label>
-            <input
-              v-model.number="form.timeout"
-              type="number"
-              min="0"
-              class="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-              placeholder="300"
-            />
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">超时时间 (秒)</label>
+            <input v-model.number="form.timeout" type="number" min="0" class="input" placeholder="300" />
           </div>
 
           <!-- Submit -->
-          <div class="flex gap-3 pt-4 border-t border-gray-700/50">
+          <div class="flex gap-3 pt-4" :style="{ borderTop: '1px solid var(--border-subtle)' }">
             <button
               type="button"
               @click="closeDrawer"
-              class="flex-1 px-4 py-2.5 border border-gray-700/50 rounded-lg hover:bg-gray-800 transition-all"
+              class="flex-1 px-4 py-2.5 rounded-lg transition-all"
+              :style="{ border: '1px solid var(--border-subtle)', color: 'var(--text-main)', backgroundColor: 'transparent' }"
+              @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+              @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
             >
               取消
             </button>
             <button
               type="submit"
-              class="flex-1 px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-medium rounded-lg transition-all shadow-soft"
+              class="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all"
+              :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
+              @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')"
+              @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
             >
               {{ isEditing ? '保存' : '创建' }}
             </button>
@@ -318,22 +361,22 @@
 
   <!-- Log Drawer -->
   <div v-if="showLogDrawer" class="fixed inset-0 z-50 overflow-hidden">
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeLogDrawer"></div>
+    <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }" @click="closeLogDrawer"></div>
     <div
-      class="absolute right-0 top-0 h-full w-full max-w-3xl bg-gray-950 border-l border-gray-700/50 transform transition-transform duration-300 ease-out"
-      :class="showLogDrawer ? 'translate-x-0' : 'translate-x-full'"
+      class="absolute right-0 top-0 h-full w-full max-w-3xl theme-transition"
+      :style="{ backgroundColor: 'var(--bg-primary)', borderLeft: '1px solid var(--border-subtle)' }"
     >
       <!-- Terminal Header -->
-      <div class="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-700/50">
+      <div class="flex items-center justify-between px-5 py-3" :style="{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }">
         <div class="flex items-center gap-3">
           <div class="flex gap-1.5">
-            <div class="w-3 h-3 rounded-full bg-rose-500"></div>
-            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+            <div class="w-3 h-3 rounded-full" style="background-color: #E43F3F;"></div>
+            <div class="w-3 h-3 rounded-full" style="background-color: #E5C07B;"></div>
+            <div class="w-3 h-3 rounded-full" style="background-color: #98C379;"></div>
           </div>
           <div>
-            <span class="text-sm font-medium text-gray-200">{{ currentTask?.name }}</span>
-            <span class="text-xs text-gray-500 ml-2">bash</span>
+            <span class="text-sm font-medium" style="color: var(--text-main);">{{ currentTask?.name }}</span>
+            <span class="text-xs ml-2" style="color: var(--text-muted);">bash</span>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -344,64 +387,92 @@
                 v-model="logSearch"
                 type="text"
                 placeholder="搜索..."
-                class="bg-gray-800/80 text-xs px-3 py-1.5 pr-8 rounded-lg border border-gray-700/50 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-36"
+                class="text-xs px-3 py-1.5 pr-8 rounded-lg font-mono"
+                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }"
               />
-              <MagnifyingGlassIcon class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" />
+              <MagnifyingGlassIcon class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2" style="color: var(--text-muted);" />
             </div>
             <input
               v-model="logDateFilter"
               type="date"
-              class="bg-gray-800/80 text-xs px-2 py-1.5 rounded-lg border border-gray-700/50 text-white focus:outline-none focus:border-indigo-500"
+              class="text-xs px-2 py-1.5 rounded-lg"
+              :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }"
             />
           </div>
-          <button @click="downloadLog" class="p-1.5 hover:bg-gray-800 rounded-lg transition-colors" title="下载日志">
-            <ArrowDownTrayIcon class="w-4 h-4 text-gray-400" />
+          <button
+            @click="downloadLog"
+            class="p-1.5 rounded-lg transition-colors"
+            :style="{ color: 'var(--text-muted)' }"
+            title="下载日志"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
+          >
+            <ArrowDownTrayIcon class="w-4 h-4" />
           </button>
-          <button @click="runTask(currentTask)" class="px-3 py-1.5 text-xs bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 transition-colors font-medium">
+          <button
+            @click="runTask(currentTask)"
+            class="px-3 py-1.5 text-xs rounded-lg font-medium transition-colors"
+            :style="{ backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary-subtle)')"
+          >
             ▶ 运行
           </button>
-          <button @click="refreshLogs" class="p-1.5 hover:bg-gray-800 rounded-lg transition-colors" title="刷新">
-            <ArrowPathIcon class="w-4 h-4 text-gray-400" />
+          <button
+            @click="refreshLogs"
+            class="p-1.5 rounded-lg transition-colors"
+            :style="{ color: 'var(--text-muted)' }"
+            title="刷新"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
+          >
+            <ArrowPathIcon class="w-4 h-4" />
           </button>
-          <button @click="closeLogDrawer" class="p-1.5 hover:bg-gray-800 rounded-lg transition-colors">
-            <XMarkIcon class="w-4 h-4 text-gray-400" />
+          <button
+            @click="closeLogDrawer"
+            class="p-1.5 rounded-lg transition-colors"
+            :style="{ color: 'var(--text-muted)' }"
+            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
+            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
+          >
+            <XMarkIcon class="w-4 h-4" />
           </button>
         </div>
       </div>
 
       <!-- Terminal Content -->
-      <div ref="terminalContent" class="h-[calc(100%-48px)] overflow-auto p-5 bg-gray-950">
+      <div ref="terminalContent" class="overflow-auto p-5" :style="{ height: 'calc(100%-48px)', backgroundColor: 'var(--bg-primary)' }">
         <div class="space-y-1 font-mono text-sm">
-          <div class="text-gray-500">
-            <span class="text-indigo-400">pycron</span>:<span class="text-emerald-400">~</span>$ python {{ currentTask?.script_path }}
+          <div style="color: var(--text-muted);">
+            <span style="color: var(--color-primary);">pycron</span>:<span style="color: var(--color-success);">~</span>$ python {{ currentTask?.script_path }}
           </div>
 
-          <div v-if="filteredLogs.length === 0" class="text-gray-500 py-6">
+          <div v-if="filteredLogs.length === 0" class="py-6" style="color: var(--text-muted);">
             <p class="text-sm">// 暂无执行记录</p>
-            <p class="text-emerald-500/70 mt-2 text-sm">// 点击 "运行" 按钮执行任务</p>
+            <p class="text-sm mt-2" style="color: var(--color-success); opacity: 0.7;">// 点击 "运行" 按钮执行任务</p>
           </div>
 
           <div v-else>
-            <div v-for="(log, idx) in filteredLogs" :key="log.id" class="border-b border-gray-800 pb-4 mb-4 last:border-0 last:pb-0">
-              <div class="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                <span class="text-indigo-400">[{{ idx + 1 }}]</span>
-                <span class="text-gray-400">{{ formatTime(log.start_time) }}</span>
-                <span v-if="log.end_time" class="text-gray-600">→ {{ formatTime(log.end_time) }}</span>
+            <div v-for="(log, idx) in filteredLogs" :key="log.id" class="pb-4 mb-4" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
+              <div class="flex items-center gap-3 text-xs mb-2" style="color: var(--text-muted);">
+                <span style="color: var(--color-primary);">[{{ idx + 1 }}]</span>
+                <span style="color: var(--text-main);">{{ formatTime(log.start_time) }}</span>
+                <span v-if="log.end_time" style="color: var(--text-disabled);">→ {{ formatTime(log.end_time) }}</span>
                 <span
                   class="px-2 py-0.5 rounded text-xs font-medium"
-                  :class="log.exit_code === 0
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
+                  :style="log.exit_code === 0
+                    ? { backgroundColor: 'var(--color-success-subtle)', color: 'var(--color-success)' }
+                    : { backgroundColor: 'var(--color-danger-subtle)', color: 'var(--color-danger)' }"
                 >
                   exit {{ log.exit_code }}
                 </span>
               </div>
-              <pre class="whitespace-pre-wrap text-gray-300 leading-relaxed text-sm" v-html="highlightKeyword(log.output || '// 无输出')"></pre>
+              <pre class="whitespace-pre-wrap leading-relaxed text-sm" style="color: var(--text-main);" v-html="highlightKeyword(log.output || '// 无输出')"></pre>
             </div>
           </div>
 
-          <div class="mt-4 text-emerald-400">
-            <span class="inline-block w-2 h-4 bg-emerald-400 animate-pulse"></span>
+          <div class="mt-4" style="color: var(--color-success);">
+            <span class="inline-block w-2 h-4 animate-pulse" :style="{ backgroundColor: 'var(--color-success)' }"></span>
           </div>
         </div>
       </div>
@@ -504,7 +575,7 @@ function formatTime(timeStr) {
 function highlightKeyword(text) {
   if (!logSearch.value) return text
   const kw = logSearch.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return text.replace(new RegExp(`(${kw})`, 'gi'), '<mark class="bg-yellow-500/30 text-yellow-200 px-0.5 rounded">$1</mark>')
+  return text.replace(new RegExp(`(${kw})`, 'gi'), '<mark style="background-color: var(--color-warning-subtle); color: var(--color-warning); padding: 0 2px; border-radius: 2px;">$1</mark>')
 }
 
 function openCreateDrawer() {
