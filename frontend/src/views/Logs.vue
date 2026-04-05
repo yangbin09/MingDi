@@ -259,12 +259,16 @@ async function fetchLogs() {
     if (filters.value.exitCode !== null && filters.value.exitCode !== '') params.exit_code = filters.value.exitCode
     if (filters.value.keyword) params.keyword = filters.value.keyword
 
+    console.log('[Logs] Request params:', params)
     const res = await logApi.search(params)
+    console.log('[Logs] Response:', res.data)
+    console.log('[Logs] total:', res.data.total, 'items length:', res.data.items?.length)
     totalLogs.value = res.data.total
     logs.value = res.data.items
     selectedLogs.value = []
   } catch (e) {
-    console.error(e)
+    console.error('[Logs] Fetch error:', e)
+    console.error('[Logs] Error response:', e.response?.data)
   } finally {
     loading.value = false
   }

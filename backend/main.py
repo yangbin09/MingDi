@@ -496,6 +496,7 @@ def search_logs(
     """Search logs with filters and pagination"""
     query = db.query(Log)
 
+    # Apply ALL filters before counting and pagination
     if task_id:
         query = query.filter(Log.task_id == task_id)
     if exit_code is not None:
@@ -504,14 +505,12 @@ def search_logs(
         query = query.filter(Log.start_time >= start_date)
     if end_date:
         query = query.filter(Log.start_time <= end_date)
-
-    # Get total count before pagination
-    total = query.count()
-
-    # Apply keyword filter in database (case-insensitive LIKE query)
     if keyword:
         keyword_lower = keyword.lower()
         query = query.filter(func.lower(Log.output).like(f"%{keyword_lower}%"))
+
+    # Get total count after all filters applied
+    total = query.count()
 
     # Order and apply pagination at database level
     logs = query.order_by(Log.start_time.desc()).offset((page - 1) * size).limit(size).all()
