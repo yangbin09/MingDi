@@ -1,0 +1,29 @@
+# EditorConfig - PyCron-Master 全局编辑器配置
+# https://editorconfig.org
+
+root = true
+
+# 全局基础规范
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# 前端文件缩进
+[*.{vue,js,ts,jsx,tsx,html,css,scss,json}]
+indent_style = space
+indent_size = 2
+
+# 后端 Python 文件缩进
+[*.py]
+indent_style = space
+indent_size = 4
+
+# Markdown 文件
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML 文件
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
