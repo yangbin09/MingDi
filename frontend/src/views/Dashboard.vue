@@ -97,148 +97,42 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import * as echarts from 'echarts'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Cpu, Monitor, Box, List, VideoPlay, Warning, PieChart } from '@element-plus/icons-vue'
-import { taskApi, systemApi } from '../utils/api.js'
-import { usePolling } from '../composables/usePolling.js'
+import { useDashboardStats } from '../composables/useDashboardStats.ts'
+import { useDashboardCharts } from '../composables/useDashboardCharts.ts'
 import StatsCard from '../components/Dashboard/StatsCard.vue'
 import ExecutionTimeline from '../components/Dashboard/ExecutionTimeline.vue'
 import QuickActions from '../components/Dashboard/QuickActions.vue'
 
 const emit = defineEmits(['openScratchpad'])
 
-const tasks = ref([])
-const timeline = ref([])
-const systemStats = ref({
-  cpu_percent: 0,
-  memory_percent: 0,
-  disk_percent: 0,
-  memory_used_gb: 0,
-  memory_total_gb: 0,
-  disk_used_gb: 0,
-  disk_total_gb: 0
-})
-
-const recentTasks = computed(() => tasks.value.slice(0, 5))
-
-const stats = computed(() => {
-  const total = tasks.value.length
-  const running = tasks.value.filter(t => t.status === 'running').length
-  const failed = tasks.value.filter(t => t.status === 'failed').length
-  const success = tasks.value.filter(t => t.status === 'success').length
-  const successRate = total > 0 ? Math.round((success / total) * 100) : 100
-  return { total, running, failedToday: failed, successRate }
-})
-
-// Chart refs
+// 图表 DOM refs
 const cpuChartRef = ref(null)
 const memoryChartRef = ref(null)
 const diskChartRef = ref(null)
-let cpuChartInstance = null
-let memoryChartInstance = null
-let diskChartInstance = null
 
-// History data for charts
-const cpuHistory = ref(Array(20).fill(0))
-const memoryHistory = ref(Array(20).fill(0))
-const diskHistory = ref(Array(20).fill(0))
+// 数据统计
+const {
+  tasks,
+  timeline,
+  systemStats,
+  recentTasks,
+  stats,
+  fetchAllData,
+  startPolling,
+  stopPolling
+} = useDashboardStats()
 
-function getChartColor(theme) {
-  if (theme === 'darcula') return '#3592C4'
-  if (theme === 'onedark') return '#61AFEF'
-  if (theme === 'gruvbox') return '#D65D0E'
-  if (theme === 'intellij') return '#3592C4'
-  return '#6366F1'
-}
+// 图表管理
+const {
+  updateCharts,
+  initCharts,
+  setupResizeListener,
+  disposeCharts
+} = useDashboardCharts()
 
-function initCharts() {
-  const theme = document.documentElement.getAttribute('data-theme') || 'darcula'
-  const primaryColor = getChartColor(theme)
-
-  const commonOptions = {
-    grid: { left: 0, right: 0, top: 2, bottom: 0 },
-    xAxis: { type: 'category', show: false, data: Array(20).fill('') },
-    yAxis: { type: 'value', min: 0, max: 100, show: false },
-    series: [{ smooth: true, symbol: 'none', lineStyle: { width: 2 }, areaStyle: { opacity: 0.2 } }],
-    animation: true,
-    animationDuration: 300
-  }
-
-  cpuChartInstance = echarts.init(cpuChartRef.value)
-  cpuChartInstance.setOption({
-    ...commonOptions,
-    series: [{ ...commonOptions.series[0], color: primaryColor, data: cpuHistory.value }]
-  })
-
-  memoryChartInstance = echarts.init(memoryChartRef.value)
-  const successColor = theme === 'darcula' ? '#67965A' : theme === 'onedark' ? '#98C379' : theme === 'gruvbox' ? '#98971A' : '#488B49'
-  memoryChartInstance.setOption({
-    ...commonOptions,
-    series: [{ ...commonOptions.series[0], color: successColor, data: memoryHistory.value }]
-  })
-
-  diskChartInstance = echarts.init(diskChartRef.value)
-  const dangerColor = theme === 'darcula' ? '#E43F3F' : theme === 'onedark' ? '#E06C75' : theme === 'gruvbox' ? '#CC241D' : '#D04438'
-  diskChartInstance.setOption({
-    ...commonOptions,
-    series: [{ ...commonOptions.series[0], color: dangerColor, data: diskHistory.value }]
-  })
-}
-
-function updateCharts() {
-  if (cpuChartInstance) {
-    cpuHistory.value.push(systemStats.value.cpu_percent)
-    cpuHistory.value.shift()
-    cpuChartInstance.setOption({ series: [{ data: cpuHistory.value }] })
-  }
-  if (memoryChartInstance) {
-    memoryHistory.value.push(systemStats.value.memory_percent)
-    memoryHistory.value.shift()
-    memoryChartInstance.setOption({ series: [{ data: memoryHistory.value }] })
-  }
-  if (diskChartInstance) {
-    diskHistory.value.push(systemStats.value.disk_percent)
-    diskHistory.value.shift()
-    diskChartInstance.setOption({ series: [{ data: diskHistory.value }] })
-  }
-}
-
-async function fetchAllData() {
-  await Promise.all([fetchTasks(), fetchTimeline(), fetchSystemStats()])
-  updateCharts()
-}
-
-async function fetchTasksData() {
-  try {
-    const res = await taskApi.list()
-    tasks.value = res.data
-  } catch (e) { console.error(e) }
-}
-
-async function fetchTasks() {
-  try {
-    const res = await taskApi.list()
-    tasks.value = res.data
-  } catch (e) { console.error(e) }
-}
-
-async function fetchTimeline() {
-  try {
-    const res = await taskApi.timeline()
-    timeline.value = res.data
-  } catch (e) { console.error(e) }
-}
-
-async function fetchSystemStats() {
-  try {
-    const res = await systemApi.stats()
-    systemStats.value = res.data
-  } catch (e) { console.error(e) }
-}
-
-// Set up polling
-const { start: startPolling, stop: stopPolling } = usePolling(fetchAllData, 5000)
+let cleanupResize = null
 
 function handleQuickAction(action) {
   if (action === 'scratchpad') {
@@ -246,26 +140,18 @@ function handleQuickAction(action) {
   }
 }
 
-onMounted(() => {
-  fetchAllData()
-  initCharts()
+onMounted(async () => {
+  await fetchAllData()
+  initCharts(cpuChartRef.value, memoryChartRef.value, diskChartRef.value)
+  updateCharts(systemStats.value)
   startPolling()
-
-  window.addEventListener('resize', handleResize)
+  cleanupResize = setupResizeListener()
 })
-
-function handleResize() {
-  cpuChartInstance?.resize()
-  memoryChartInstance?.resize()
-  diskChartInstance?.resize()
-}
 
 onUnmounted(() => {
   stopPolling()
-  window.removeEventListener('resize', handleResize)
-  cpuChartInstance?.dispose()
-  memoryChartInstance?.dispose()
-  diskChartInstance?.dispose()
+  cleanupResize?.()
+  disposeCharts()
 })
 </script>
 
