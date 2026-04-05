@@ -320,17 +320,16 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
 import * as echarts from 'echarts'
 import {
   ListBulletIcon, PlayIcon, ExclamationTriangleIcon, ChartPieIcon,
   PlusIcon, CpuChipIcon, CircleStackIcon, ServerIcon,
   CodeBracketIcon, Cog6ToothIcon, ClockIcon
 } from '@heroicons/vue/24/outline'
+import { taskApi, systemApi } from '../utils/api.js'
+import { formatTime, statusText } from '../utils/formatters.js'
 
 const emit = defineEmits(['openScratchpad'])
-
-const api = axios.create({ baseURL: 'http://localhost:8000' })
 
 const tasks = ref([])
 const timeline = ref([])
@@ -363,16 +362,6 @@ const stats = computed(() => {
   const successRate = total > 0 ? Math.round((success / total) * 100) : 100
   return { total, running, failedToday: failed, successRate }
 })
-
-function statusText(status) {
-  const texts = { idle: '闲置', running: '运行中', success: '成功', failed: '失败', timeout: '超时' }
-  return texts[status] || status
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return ''
-  return new Date(timeStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 function initCharts() {
   const getChartColor = (theme) => {
@@ -436,21 +425,21 @@ function updateCharts() {
 
 async function fetchTasks() {
   try {
-    const res = await api.get('/tasks')
+    const res = await taskApi.list()
     tasks.value = res.data
   } catch (e) { console.error(e) }
 }
 
 async function fetchTimeline() {
   try {
-    const res = await api.get('/tasks/timeline')
+    const res = await taskApi.timeline()
     timeline.value = res.data
   } catch (e) { console.error(e) }
 }
 
 async function fetchSystemStats() {
   try {
-    const res = await api.get('/system/stats')
+    const res = await systemApi.stats()
     systemStats.value = res.data
     updateCharts()
   } catch (e) { console.error(e) }

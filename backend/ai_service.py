@@ -12,8 +12,32 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
+
+# Pre-compiled regex patterns for extract_requirements (performance optimization)
+IMPORT_PATTERN_STANDARD = re.compile(r'^import\s+(\w+)')
+IMPORT_PATTERN_FROM = re.compile(r'^from\s+(\w+)\s+import')
+
+# Create a shared session with connection pooling
+_session = None
+
+
+def get_http_session() -> requests.Session:
+    """Get or create a shared requests session with connection pooling"""
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=20,
+            max_retries=Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+        )
+        _session.mount('https://', adapter)
+        _session.mount('http://', adapter)
+    return _session
 
 # Minimax API Configuration
 MINIMAX_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_pro"
@@ -174,7 +198,8 @@ class AIService:
         }
 
         try:
-            response = requests.post(
+            session = get_http_session()
+            response = session.post(
                 f"{self.api_url}?GroupId={self.group_id}",
                 headers=headers,
                 json=payload,
@@ -288,15 +313,10 @@ def extract_requirements(code: str) -> List[str]:
         "asyncio": None,
     }
 
-    import_patterns = [
-        r'^import\s+(\w+)',
-        r'^from\s+(\w+)\s+import',
-    ]
-
     for line in code.split('\n'):
         line = line.strip()
-        for pattern in import_patterns:
-            match = re.match(pattern, line)
+        for pattern in (IMPORT_PATTERN_STANDARD, IMPORT_PATTERN_FROM):
+            match = pattern.match(line)
             if match:
                 module = match.group(1)
                 if module in import_map and import_map[module]:
@@ -342,7 +362,7 @@ def parse_cron_human(cron_expr: str) -> str:
         try:
             days = [week_days[int(d)] for d in week.split(',')]
             desc.append(f"每周{','.join(days)} {hour}:{minute.zfill(2)}")
-        except:
+        except (ValueError, IndexError):
             desc.append(f"每周{week} {hour}:{minute.zfill(2)}")
     else:
         desc.append(f"在 {cron_expr} 执行")

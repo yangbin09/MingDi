@@ -829,7 +829,6 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import axios from 'axios'
 import cronParser from 'cron-parser'
 import {
   PlusIcon, PlayIcon, PencilIcon, TrashIcon, CommandLineIcon,
@@ -837,8 +836,8 @@ import {
   ArrowRightIcon, MagnifyingGlassIcon, SparklesIcon,
   ClipboardDocumentIcon, CubeIcon, ViewColumnsIcon
 } from '@heroicons/vue/24/outline'
-
-const api = axios.create({ baseURL: 'http://localhost:8000' })
+import { taskApi, aiApi, scriptApi, nodeFlowApi } from '../utils/api.js'
+import { formatTimeFull, cronHumanText as formatCronHuman, statusText } from '../utils/formatters.js'
 
 const tasks = ref([])
 const showDrawer = ref(false)
@@ -908,14 +907,14 @@ const cronPresets = [
 
 async function fetchTasks() {
   try {
-    const res = await api.get('/tasks')
+    const res = await taskApi.list()
     tasks.value = res.data
   } catch (e) { console.error(e) }
 }
 
 async function fetchAiCapabilities() {
   try {
-    const res = await api.get('/ai/capabilities')
+    const res = await aiApi.capabilities()
     aiCapabilities.value = res.data
   } catch (e) { console.error(e) }
 }
@@ -933,27 +932,7 @@ function getNextRun(cronExpr) {
   } catch { return '-' }
 }
 
-function cronHumanText(expr) {
-  try {
-    const parts = expr.split(' ')
-    if (parts.length !== 5) return ''
-    const [min, hour, day, month, week] = parts
-    if (expr === '* * * * *') return '每分钟执行一次'
-    if (expr === '0 * * * *') return '每小时整点执行'
-    if (day === '*' && month === '*' && week === '*') return `每天 ${hour}:${min.padStart(2, '0')} 执行`
-    if (week !== '*' && day === '*') {
-      const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-      return `每周${weekDays[parseInt(week)]} ${hour}:${min.padStart(2, '0')} 执行`
-    }
-    return `将在 ${expr} 执行`
-  } catch { return '' }
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return ''
-  return new Date(timeStr).toLocaleString('zh-CN')
-}
-
+// Use shared formatters - local overrides for backward compatibility
 function highlightKeyword(text) {
   if (!logSearch.value) return text
   const kw = logSearch.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -966,7 +945,7 @@ async function generateScriptWithAI() {
   if (!aiDescription.value.trim() || aiGenerating.value) return
   aiGenerating.value = true
   try {
-    const res = await api.post('/ai/generate-script', { description: aiDescription.value })
+    const res = await aiApi.generateScript(aiDescription.value)
     form.script_content = res.data.code
     scriptMode.value = 'editor'
     // Auto-generate doc
@@ -982,7 +961,7 @@ async function reviewCodeWithAI() {
   if (!form.script_content || aiReviewing.value) return
   aiReviewing.value = true
   try {
-    const res = await api.post('/ai/code-review', { code: form.script_content })
+    const res = await aiApi.codeReview(form.script_content)
     aiReviewResult.value = res.data.review
   } catch (e) {
     alert('AI审查失败: ' + (e.response?.data?.detail || e.message))
@@ -995,7 +974,7 @@ async function generateDocWithAI() {
   if (!form.script_content || aiDocGenerating.value) return
   aiDocGenerating.value = true
   try {
-    const res = await api.post('/ai/generate-doc', { code: form.script_content })
+    const res = await aiApi.generateDoc(form.script_content)
     aiGeneratedDoc.value = res.data.doc
     form.description = res.data.doc
   } catch (e) {
@@ -1009,7 +988,7 @@ async function convertNLPCron() {
   if (!nlpCronInput.value.trim() || aiCronConverting.value) return
   aiCronConverting.value = true
   try {
-    const res = await api.post('/ai/nlp-to-cron', { natural_language: nlpCronInput.value })
+    const res = await aiApi.nlpToCron(nlpCronInput.value)
     form.cron_expr = res.data.cron_expr
     nlpCronResult.value = res.data.description
     setTimeout(() => { nlpCronResult.value = '' }, 3000)
@@ -1024,7 +1003,7 @@ async function summarizeLogWithAI() {
   if (!currentLog.value?.output || aiLogSummarizing.value) return
   aiLogSummarizing.value = true
   try {
-    const res = await api.post('/ai/summarize-log', { log_content: currentLog.value.output })
+    const res = await aiApi.summarizeLog(currentLog.value.output)
     aiLogSummary.value = res.data.summary
   } catch (e) {
     alert('日志摘要失败: ' + (e.response?.data?.detail || e.message))
@@ -1038,10 +1017,7 @@ async function diagnoseErrorWithAI(log) {
   aiDiagnosingLogId.value = log.id
   aiErrorDiagnosis.value = null
   try {
-    const res = await api.post('/ai/diagnose-error', {
-      error_traceback: log.output,
-      script_content: ''
-    })
+    const res = await aiApi.diagnoseError(log.output, '')
     aiErrorDiagnosis.value = res.data.diagnosis
   } catch (e) {
     alert('AI诊断失败: ' + (e.response?.data?.detail || e.message))
@@ -1151,9 +1127,9 @@ async function saveNodeFlow() {
       is_active: true
     }
     if (flowId.value) {
-      await api.put(`/node-flows/${flowId.value}`, payload)
+      await nodeFlowApi.update(flowId.value, payload)
     } else {
-      const res = await api.post('/node-flows', payload)
+      const res = await nodeFlowApi.create(payload)
       flowId.value = res.data.id
     }
     alert('保存成功')
@@ -1196,7 +1172,7 @@ function openEditDrawer(task) {
 
 async function fetchWebhookInfo(taskId) {
   try {
-    const res = await api.get(`/tasks/${taskId}/webhook-info`)
+    const res = await taskApi.webhookInfo(taskId)
     currentWebhookToken.value = res.data.webhook_token || ''
   } catch (e) {
     console.error(e)
@@ -1246,23 +1222,21 @@ async function submitForm() {
     // If using editor mode, save the script first
     if (scriptMode.value === 'editor' && form.script_content) {
       const filename = 'task_' + Date.now() + '.py'
-      await api.post('/scripts/upload-text', null, {
-        params: { filename, content: form.script_content }
-      })
+      await scriptApi.uploadText(filename, form.script_content)
       payload.script_path = './scripts/' + filename
     }
 
     if (isEditing.value) {
-      await api.put(`/tasks/${form.id}`, payload)
+      await taskApi.update(form.id, payload)
       if (payload.webhook_enabled) {
-        await api.post(`/tasks/${form.id}/enable-webhook`)
+        await taskApi.enableWebhook(form.id)
         await fetchWebhookInfo(form.id)
       }
     } else {
-      const res = await api.post('/tasks', payload)
+      const res = await taskApi.create(payload)
       // Enable webhook if requested
       if (payload.webhook_enabled) {
-        await api.post(`/tasks/${res.data.id}/enable-webhook`)
+        await taskApi.enableWebhook(res.data.id)
         await fetchWebhookInfo(res.data.id)
       }
     }
@@ -1272,21 +1246,21 @@ async function submitForm() {
 }
 
 async function toggleTask(task) {
-  try { await api.put(`/tasks/${task.id}`, { is_active: !task.is_active }); fetchTasks() }
+  try { await taskApi.toggle(task.id, !task.is_active); fetchTasks() }
   catch (e) { console.error(e) }
 }
 
 async function runTask(task) {
   if (!task) task = currentTask.value
   try {
-    await api.post(`/tasks/${task.id}/run`)
+    await taskApi.run(task.id)
     setTimeout(() => { fetchTasks(); refreshLogs() }, 1000)
   } catch (e) { alert('启动失败: ' + (e.response?.data?.detail || e.message)) }
 }
 
 async function deleteTask(task) {
   if (!confirm(`确定删除任务 "${task.name}" 吗？`)) return
-  try { await api.delete(`/tasks/${task.id}`); fetchTasks() }
+  try { await taskApi.delete(task.id); fetchTasks() }
   catch (e) { console.error(e) }
 }
 
@@ -1307,7 +1281,7 @@ function closeLogDrawer() { showLogDrawer.value = false; aiLogSummary.value = nu
 async function refreshLogs() {
   if (!currentTask.value) return
   try {
-    const res = await api.get(`/tasks/${currentTask.value.id}/logs`)
+    const res = await taskApi.logs(currentTask.value.id)
     logs.value = res.data
     if (logs.value.length > 0) {
       currentLog.value = logs.value[0]

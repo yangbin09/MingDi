@@ -338,9 +338,12 @@ def get_system_stats():
     """Get real-time system resource usage"""
     try:
         import psutil
-        cpu = psutil.cpu_percent(interval=0.1)
+        import os
+        cpu = psutil.cpu_percent(interval=None)  # Non-blocking
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        # Cross-platform disk usage: use current working directory's drive on Windows
+        disk_path = os.path.splitdrive(os.getcwd())[0] + '\\' if os.name == 'nt' else '/'
+        disk = psutil.disk_usage(disk_path)
 
         return SystemStats(
             cpu_percent=cpu,
@@ -379,8 +382,14 @@ def get_tasks_timeline(db: Session = Depends(get_db)):
     cutoff = datetime.now() - timedelta(hours=24)
 
     logs = db.query(Log).filter(Log.start_time >= cutoff).order_by(Log.start_time.desc()).all()
-    tasks = db.query(Task).all()
-    task_map = {t.id: t.name for t in tasks}
+
+    # Optimization: Only fetch task IDs that appear in logs, not all tasks
+    task_ids = list(set(log.task_id for log in logs))
+    if task_ids:
+        tasks = db.query(Task).filter(Task.id.in_(task_ids)).all()
+        task_map = {t.id: t.name for t in tasks}
+    else:
+        task_map = {}
 
     timeline = []
     for log in logs:
@@ -407,59 +416,6 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-
-@app.post("/tasks", response_model=TaskResponse)
-def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
-    task = Task(
-        name=task_data.name,
-        script_path=task_data.script_path,
-        cron_expr=task_data.cron_expr,
-        is_active=task_data.is_active,
-        interpreter_path=task_data.interpreter_path,
-        depends_on=task_data.depends_on,
-        timeout=task_data.timeout or 300,
-    )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-
-    if task.cron_expr and task.is_active:
-        add_task_job(task)
-
-    return task
-
-
-@app.put("/tasks/{task_id}", response_model=TaskResponse)
-def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends(get_db)):
-    task = db.query(Task).filter(Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if task_data.name is not None:
-        task.name = task_data.name
-    if task_data.script_path is not None:
-        task.script_path = task_data.script_path
-    if task_data.cron_expr is not None:
-        task.cron_expr = task_data.cron_expr
-    if task_data.is_active is not None:
-        task.is_active = task_data.is_active
-    if task_data.interpreter_path is not None:
-        task.interpreter_path = task_data.interpreter_path
-    if task_data.depends_on is not None:
-        task.depends_on = task_data.depends_on
-    if task_data.timeout is not None:
-        task.timeout = task_data.timeout
-
-    db.commit()
-    db.refresh(task)
-
-    if task.is_active and task.cron_expr:
-        add_task_job(task)
-    else:
-        remove_task_job(task_id)
-
     return task
 
 
@@ -1239,6 +1195,7 @@ def delete_node_flow(flow_id: int, db: Session = Depends(get_db)):
 def execute_node_flow(flow_id: int, db: Session = Depends(get_db)):
     """Execute a node flow (run all tasks in topological order)"""
     import json
+    from collections import deque
 
     flow = db.query(NodeFlow).filter(NodeFlow.id == flow_id).first()
     if not flow:
@@ -1258,12 +1215,12 @@ def execute_node_flow(flow_id: int, db: Session = Depends(get_db)):
         adjacency[edge['source']].append(edge['target'])
         in_degree[edge['target']] += 1
 
-    # Find nodes with no dependencies (in_degree == 0)
-    queue = [node['id'] for node in nodes if in_degree[node['id']] == 0]
+    # Use deque for O(1) popleft instead of O(n) list.pop(0)
+    queue = deque([node['id'] for node in nodes if in_degree[node['id']] == 0])
     execution_order = []
 
     while queue:
-        node_id = queue.pop(0)
+        node_id = queue.popleft()
         execution_order.append(node_id)
 
         for neighbor in adjacency[node_id]:
@@ -1271,12 +1228,23 @@ def execute_node_flow(flow_id: int, db: Session = Depends(get_db)):
             if in_degree[neighbor] == 0:
                 queue.append(neighbor)
 
+    # Pre-load all tasks in one query to avoid N+1 problem
+    task_ids = [n['task_id'] for n in nodes if n.get('task_id')]
+    if task_ids:
+        tasks = db.query(Task).filter(Task.id.in_(task_ids)).all()
+        task_map = {t.id: t for t in tasks}
+    else:
+        task_map = {}
+
+    # Build node map for O(1) lookup instead of O(n) linear search
+    node_map = {n['id']: n for n in nodes}
+
     # Execute tasks in order
     results = []
     for node_id in execution_order:
-        node = next((n for n in nodes if n['id'] == node_id), None)
+        node = node_map.get(node_id)
         if node and node.get('task_id'):
-            task = db.query(Task).filter(Task.id == node['task_id']).first()
+            task = task_map.get(node['task_id'])
             if task:
                 execute_task_now(task.id)
                 results.append({
