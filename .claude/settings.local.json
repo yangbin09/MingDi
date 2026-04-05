@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude plugins:*)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir:*)",
+      "Bash(pip install:*)",
+      "Bash(timeout 5 python -c \"from main import app; from models import init_db; init_db\\(\\); print\\('Backend OK'\\)\")",
+      "Bash(python -m py_compile main.py models.py scheduler.py schemas.py)",
+      "Bash(/c/Users/16922/AppData/Local/Programs/Python/Python312/python.exe:*)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(curl -s http://localhost:8000/tasks)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(taskkill //F //IM uvicorn.exe)",
+      "Bash(taskkill //F //PID 25804)"
+    ]
+  }
+}
