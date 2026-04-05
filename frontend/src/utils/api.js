@@ -91,7 +91,25 @@ export const systemApi = {
 export const logApi = {
   get: (logId) => apiClient.get(`/logs/${logId}`),
   search: (params) => apiClient.get('/logs/search', { params }),
+  searchByTask: (taskId, keyword, startDate, endDate, exitCode) =>
+    apiClient.get('/logs/search', { params: { task_id: taskId, keyword, start_date: startDate, end_date: endDate, exit_code: exitCode } }),
   download: (logId) => apiClient.get(`/logs/${logId}/download`, { responseType: 'blob' })
+}
+
+// Env Var API functions
+export const envVarApi = {
+  list: () => apiClient.get('/env-vars'),
+  create: (data) => apiClient.post('/env-vars', data),
+  update: (id, data) => apiClient.put(`/env-vars/${id}`, data),
+  delete: (id) => apiClient.delete(`/env-vars/${id}`)
+}
+
+// Alert API functions
+export const alertApi = {
+  list: () => apiClient.get('/alerts'),
+  create: (data) => apiClient.post('/alerts', data),
+  update: (id, data) => apiClient.put(`/alerts/${id}`, data),
+  delete: (id) => apiClient.delete(`/alerts/${id}`)
 }
 
 // Script API functions

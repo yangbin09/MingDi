@@ -7,17 +7,6 @@
         <span class="text-sm" style="color: var(--text-muted);">共 <span style="color: var(--text-main); font-weight: 500;">{{ tasks.length }}</span> 个任务</span>
       </div>
       <div class="flex items-center gap-2">
-        <!-- Node Flow Editor Button -->
-        <button
-          @click="showNodeFlowEditor = true"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all"
-          :style="{ backgroundColor: 'var(--bg-secondary)', color: 'var(--color-purple)', border: '1px solid var(--border-subtle)' }"
-          @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-          @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--bg-secondary)')"
-        >
-          <ViewColumnsIcon class="w-4 h-4" />
-          节点编排
-        </button>
         <button
           @click="openCreateDrawer"
           class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200"
@@ -181,7 +170,7 @@
                   <PlayIcon class="w-4 h-4" />
                 </button>
                 <button
-                  @click="openLogDrawer(task)"
+                  @click="goToLogs(task)"
                   class="p-2 rounded-lg transition-colors"
                   :style="{ color: 'var(--text-muted)' }"
                   title="查看日志"
@@ -733,98 +722,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Node Flow Editor Modal -->
-  <div v-if="showNodeFlowEditor" class="fixed inset-0 z-50 overflow-hidden">
-    <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }" @click="showNodeFlowEditor = false"></div>
-    <div
-      class="absolute inset-4 md:inset-8 lg:inset-16 bg-gray-900 border border-gray-700/50 rounded-2xl flex flex-col shadow-2xl"
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700/50">
-        <div class="flex items-center gap-3">
-          <ViewColumnsIcon class="w-6 h-6" style="color: var(--color-purple);" />
-          <span class="text-lg font-semibold text-gray-100">可视化节点编排</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <button
-            @click="saveNodeFlow"
-            class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-all"
-          >
-            保存
-          </button>
-          <button @click="showNodeFlowEditor = false" class="p-2 hover:bg-gray-800 rounded-lg transition-colors">
-            <XMarkIcon class="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      <!-- Canvas -->
-      <div class="flex-1 relative overflow-hidden bg-gray-800/50">
-        <div id="node-flow-canvas" ref="nodeFlowCanvas" class="w-full h-full" @mousedown="onCanvasMouseDown">
-          <!-- Nodes will be rendered here -->
-          <div
-            v-for="node in flowNodes"
-            :key="node.id"
-            class="absolute bg-gray-800 border border-gray-600 rounded-lg p-4 cursor-move min-w-48 shadow-lg"
-            :style="{ left: node.x + 'px', top: node.y + 'px' }"
-            @mousedown.stop="onNodeMouseDown($event, node)"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: getNodeColor(node.type) }"></span>
-              <span class="text-sm font-medium text-gray-100">{{ node.label }}</span>
-            </div>
-            <div class="text-xs text-gray-400">{{ node.description }}</div>
-          </div>
-
-          <!-- SVG for edges -->
-          <svg class="absolute inset-0 pointer-events-none" style="width: 100%; height: 100%;">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="#6366F1" />
-              </marker>
-            </defs>
-            <path
-              v-for="edge in flowEdges"
-              :key="edge.id"
-              :d="getEdgePath(edge)"
-              fill="none"
-              stroke="#6366F1"
-              stroke-width="2"
-              marker-end="url(#arrowhead)"
-            />
-          </svg>
-        </div>
-
-        <!-- Toolbar -->
-        <div class="absolute top-4 left-4 flex flex-col gap-2">
-          <button
-            @click="addFlowNode"
-            class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-            title="添加节点"
-          >
-            <PlusIcon class="w-5 h-5 text-gray-300" />
-          </button>
-        </div>
-
-        <!-- Node Palette -->
-        <div class="absolute top-4 right-4 bg-gray-800 border border-gray-700 rounded-lg p-3 w-64">
-          <div class="text-xs text-gray-400 mb-2">可用任务</div>
-          <div class="space-y-2">
-            <div
-              v-for="task in tasks"
-              :key="task.id"
-              class="flex items-center gap-2 p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600"
-              @click="addTaskToFlow(task)"
-            >
-              <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: getStatusColor(task.status) }"></span>
-              <span class="text-sm text-gray-200 truncate">{{ task.name }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
@@ -834,46 +731,27 @@ import {
   PlusIcon, PlayIcon, PencilIcon, TrashIcon, CommandLineIcon,
   XMarkIcon, ArrowPathIcon, InboxIcon, ArrowDownTrayIcon,
   ArrowRightIcon, MagnifyingGlassIcon, SparklesIcon,
-  ClipboardDocumentIcon, CubeIcon, ViewColumnsIcon
+  ClipboardDocumentIcon, CubeIcon
 } from '@heroicons/vue/24/outline'
-import { taskApi, aiApi, scriptApi, nodeFlowApi } from '../utils/api.js'
+import { taskApi, aiApi, scriptApi } from '../utils/api.js'
 import { formatTimeFull, cronHumanText as formatCronHuman, statusText } from '../utils/formatters.js'
 
 const tasks = ref([])
 const showDrawer = ref(false)
-const showLogDrawer = ref(false)
-const showNodeFlowEditor = ref(false)
 const isEditing = ref(false)
 const scriptMode = ref('path')
 const currentTask = ref(null)
-const logs = ref([])
-const logSearch = ref('')
-const logDateFilter = ref('')
-const currentLog = ref(null)
-const aiLogSummary = ref(null)
-const aiErrorDiagnosis = ref(null)
-const aiDiagnosingLogId = ref(null)
 
 // AI state
 const aiDescription = ref('')
 const aiGenerating = ref(false)
-const aiReviewResult = ref(null)
-const aiReviewing = ref(false)
 const aiGeneratedDoc = ref('')
 const aiDocGenerating = ref(false)
 const nlpCronInput = ref('')
 const nlpCronResult = ref('')
 const aiCronConverting = ref(false)
-const aiLogSummarizing = ref(false)
 const aiCapabilities = ref({ docker_available: false })
 const currentWebhookToken = ref('')
-
-// Node Flow state
-const flowNodes = ref([])
-const flowEdges = ref([])
-const flowId = ref(null)
-const draggedNode = ref(null)
-const dragOffset = ref({ x: 0, y: 0 })
 
 const form = reactive({
   id: null, name: '', script_path: './scripts/', script_content: '',
@@ -1264,29 +1142,9 @@ async function deleteTask(task) {
   catch (e) { console.error(e) }
 }
 
-function openLogDrawer(task) {
-  currentTask.value = task
-  logs.value = []
-  logSearch.value = ''
-  logDateFilter.value = ''
-  aiLogSummary.value = null
-  aiErrorDiagnosis.value = null
-  currentLog.value = null
-  showLogDrawer.value = true
-  refreshLogs()
-}
-
-function closeLogDrawer() { showLogDrawer.value = false; aiLogSummary.value = null; aiErrorDiagnosis.value = null }
-
-async function refreshLogs() {
-  if (!currentTask.value) return
-  try {
-    const res = await taskApi.logs(currentTask.value.id)
-    logs.value = res.data
-    if (logs.value.length > 0) {
-      currentLog.value = logs.value[0]
-    }
-  } catch (e) { console.error(e) }
+function goToLogs(task) {
+  // Navigate to logs page with task filter
+  window.location.href = `/logs?taskId=${task.id}`
 }
 
 async function downloadLog() {

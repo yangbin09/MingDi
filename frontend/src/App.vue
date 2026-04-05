@@ -146,14 +146,19 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
+
+const route = useRoute()
 import {
   ChartBarIcon,
   ListBulletIcon,
   Cog6ToothIcon,
   ArrowPathIcon,
   CodeBracketIcon,
-  CpuChipIcon
+  DocumentTextIcon,
+  SparklesIcon,
+  ShareIcon
 } from '@heroicons/vue/24/outline'
 import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import Scratchpad from './components/Scratchpad.vue'
@@ -168,13 +173,22 @@ const showScratchpad = ref(false)
 const navItems = [
   { path: '/', name: 'Dashboard', label: '仪表盘', icon: ChartBarIcon },
   { path: '/tasks', name: 'Tasks', label: '任务管理', icon: ListBulletIcon },
-  { path: '/ai-hub', name: 'AIHub', label: '🤖 智能中枢', icon: CpuChipIcon },
+  { path: '/logs', name: 'Logs', label: '日志中心', icon: DocumentTextIcon },
+  { path: '/ai', name: 'AIAssistant', label: 'AI 助手', icon: SparklesIcon },
+  { path: '/flows', name: 'Flows', label: '节点编排', icon: ShareIcon },
   { path: '/settings', name: 'Settings', label: '系统设置', icon: Cog6ToothIcon },
 ]
 
 const pageTitle = computed(() => {
-  const titles = { Dashboard: '仪表盘概览', Tasks: '任务管理', Settings: '系统设置', AIHub: '🤖 智能中枢' }
-  return titles[this?.$route?.name] || '仪表盘概览'
+  const titles = {
+    Dashboard: '仪表盘概览',
+    Tasks: '任务管理',
+    Logs: '日志中心',
+    AIAssistant: 'AI 助手',
+    Flows: '节点编排',
+    Settings: '系统设置'
+  }
+  return titles[route.name] || '仪表盘概览'
 })
 
 const hasRunningTasks = computed(() => runningTaskCount.value > 0)
