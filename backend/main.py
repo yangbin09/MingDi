@@ -516,7 +516,7 @@ def search_logs(
         query = query.filter(Log.start_time <= end_date)
     if keyword:
         keyword_lower = keyword.lower()
-        query = query.filter(func.lower(Log.output).like(f"%{keyword_lower}%"))
+        query = query.filter(func.lower(Log.output).like(f"%{keyword_lower}%", escape="/"))
 
     # Get total count after all filters applied
     total = query.count()
