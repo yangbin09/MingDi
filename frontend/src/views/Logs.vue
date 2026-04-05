@@ -9,20 +9,27 @@
         </h1>
         <p class="text-sm mt-1" style="color: var(--text-muted);">集中查看和管理所有任务执行日志</p>
       </div>
-      <el-button :icon="Refresh" circle @click="refreshLogs" :loading="loading" />
+      <div class="flex items-center gap-3">
+        <el-select v-model="autoRefreshInterval" placeholder="自动刷新" clearable style="width: 120px;">
+          <el-option label="5秒刷新" :value="5000" />
+          <el-option label="10秒刷新" :value="10000" />
+          <el-option label="30秒刷新" :value="30000" />
+        </el-select>
+        <el-button :icon="Refresh" circle @click="refreshLogs" :loading="loading" />
+      </div>
     </div>
 
     <!-- Filters -->
     <el-card shadow="never" class="filter-card">
       <el-row :gutter="16" align="middle">
         <el-col :xs="24" :sm="8" :md="6">
-          <el-select v-model="filters.taskId" placeholder="选择任务" clearable @change="handleFilterChange">
+          <el-select v-model="filters.taskId" placeholder="选择任务" clearable>
             <el-option label="全部任务" :value="null" />
             <el-option v-for="task in tasks" :key="task.id" :label="task.name" :value="task.id" />
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="8" :md="6">
-          <el-select v-model="filters.exitCode" placeholder="状态" clearable @change="handleFilterChange">
+          <el-select v-model="filters.exitCode" placeholder="状态" clearable>
             <el-option label="全部" :value="null" />
             <el-option label="成功" :value="0" />
             <el-option label="失败" :value="1" />
@@ -33,7 +40,7 @@
             v-model="filters.keyword"
             placeholder="搜索日志内容..."
             clearable
-            @input="handleDebouncedSearch"
+            @keyup.enter="handleSearch"
           >
             <template #prefix>
               <el-icon><Search /></el-icon>
@@ -42,43 +49,87 @@
         </el-col>
       </el-row>
       <el-row :gutter="16" class="mt-4">
-        <el-col :span="12">
+        <el-col :xs="24" :sm="12" :md="10">
           <el-date-picker
             v-model="dateRange"
             type="daterange"
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            @change="handleFilterChange"
             style="width: 100%"
           />
         </el-col>
-        <el-col :span="12" class="flex justify-end">
-          <el-button
-            v-if="selectedLogs.length > 0"
-            type="primary"
-            @click="summarizeSelectedLogs"
-            :loading="aiSummarizing"
-          >
-            <el-icon><MagicStick /></el-icon>
-            AI 摘要 ({{ selectedLogs.length }})
+        <el-col :xs="24" :sm="12" :md="14" class="flex justify-end gap-2">
+          <el-button type="primary" @click="handleSearch" :loading="loading">
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
+          <el-button @click="handleReset">
+            <el-icon><RefreshLeft /></el-icon>
+            重置
+          </el-button>
+        </el-col>
+      </el-row>
+
+      <!-- Bulk Actions Bar -->
+      <el-row v-if="selectedLogs.length > 0" :gutter="16" class="mt-4">
+        <el-col :span="24">
+          <el-alert type="info" :closable="false" class="bulk-actions-bar">
+            <template #title>
+              <span>已选择 <strong>{{ selectedLogs.length }}</strong> 项&nbsp;&nbsp;</span>
+              <el-button type="danger" plain size="small" @click="handleBatchDelete">
+                <el-icon><Delete /></el-icon>
+                批量删除
+              </el-button>
+              <el-button size="small" @click="clearSelection">清空选择</el-button>
+            </template>
+          </el-alert>
         </el-col>
       </el-row>
     </el-card>
 
     <!-- Logs Table -->
     <el-card shadow="never" class="logs-card">
-      <el-empty v-if="logs.length === 0" description="暂无日志记录" />
+      <el-empty v-if="logs.length === 0 && !loading" description="暂无日志记录" />
 
       <el-table
-        v-else
+        v-if="logs.length > 0"
         :data="logs"
         stripe
         @selection-change="handleSelectionChange"
         :header-cell-style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
+        row-key="id"
+        :expand-row-keys="expandedRows"
+        @expand-change="handleExpandChange"
       >
         <el-table-column type="selection" width="50" />
+        <el-table-column type="expand" width="50">
+          <template #default="{ row }">
+            <div class="log-expand-preview">
+              <div class="expand-header">
+                <span class="text-sm" style="color: var(--text-muted);">日志预览 (最后10行)</span>
+                <el-button size="small" type="primary" plain @click="viewLogDetail(row)">
+                  <el-icon><FullScreen /></el-icon>
+                  进入全屏查看
+                </el-button>
+              </div>
+              <pre class="expand-content">{{ getLastLines(row.output, 10) }}</pre>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="" width="50" align="center">
+          <template #default="{ row }">
+            <el-tooltip :content="expandedRows.includes(row.id) ? '收起预览' : '展开预览'" placement="top">
+              <el-button
+                size="small"
+                :icon="expandedRows.includes(row.id) ? 'DArrowRight' : 'DArrowRight'"
+                :type="expandedRows.includes(row.id) ? 'primary' : 'default'"
+                link
+                @click="toggleExpand(row)"
+              />
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="任务" min-width="200">
           <template #default="{ row }">
             <div class="font-medium">{{ getTaskName(row.task_id) }}</div>
@@ -93,14 +144,16 @@
           </template>
         </el-table-column>
         <el-table-column label="开始时间" width="180">
-          <template #default="{ row }">{{ formatTime(row.start_time) }}</template>
+          <template #default="{ row }">
+            <span class="font-mono text-sm">{{ formatTimePrecise(row.start_time) }}</span>
+          </template>
         </el-table-column>
-        <el-table-column label="时长" width="100">
+        <el-table-column label="时长" width="120">
           <template #default="{ row }">
             <span class="font-mono">{{ formatDuration(row) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" align="right">
+        <el-table-column label="操作" width="200" align="right">
           <template #default="{ row }">
             <el-button-group>
               <el-tooltip content="查看详情" placement="top">
@@ -116,6 +169,11 @@
               <el-tooltip content="下载" placement="top">
                 <el-button size="small" type="success" plain @click="downloadSingleLog(row)">
                   <el-icon><Download /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" placement="top">
+                <el-button size="small" type="danger" plain @click="handleSingleDelete(row)">
+                  <el-icon><Delete /></el-icon>
                 </el-button>
               </el-tooltip>
             </el-button-group>
@@ -191,10 +249,10 @@
               {{ currentLog.exit_code === 0 ? '成功' : '失败' }} (exit {{ currentLog.exit_code }})
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ formatTimeFull(currentLog.start_time) }}</el-descriptions-item>
-          <el-descriptions-item v-if="currentLog.end_time" label="结束时间">{{ formatTimeFull(currentLog.end_time) }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ formatTimePrecise(currentLog.start_time) }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentLog.end_time" label="结束时间">{{ formatTimePrecise(currentLog.end_time) }}</el-descriptions-item>
           <el-descriptions-item v-if="getDuration(currentLog)" label="时长">
-            <span class="font-mono">{{ getDuration(currentLog) }}s</span>
+            <span class="font-mono">{{ formatDuration(currentLog) }}</span>
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -207,13 +265,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Document, Refresh, Search, View, Download, MagicStick
+  Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, DArrowRight
 } from '@element-plus/icons-vue'
 import { taskApi, logApi, aiApi } from '../utils/api.js'
-import { formatTimeFull } from '../utils/formatters.js'
 import { useDebounce } from '../composables/useDebounce.js'
 
 const { debounced: debouncedSearch } = useDebounce(() => applyFilters(), 300)
@@ -229,6 +286,9 @@ const aiDiagnosis = ref(null)
 const aiSummarizing = ref(false)
 const diagnosingLogId = ref(null)
 const dateRange = ref(null)
+const expandedRows = ref([])
+const autoRefreshInterval = ref(null)
+let autoRefreshTimer = null
 
 const filters = ref({
   taskId: null,
@@ -241,6 +301,32 @@ const pageSize = ref(20)
 const totalLogs = ref(0)
 
 const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
+
+// 自动刷新逻辑
+function startAutoRefresh() {
+  stopAutoRefresh()
+  if (autoRefreshInterval.value) {
+    autoRefreshTimer = setInterval(() => {
+      fetchLogs()
+    }, autoRefreshInterval.value)
+  }
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+watch(autoRefreshInterval, (newVal, oldVal) => {
+  if (oldVal) stopAutoRefresh()
+  if (newVal) startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
+})
 
 async function fetchTasks() {
   try {
@@ -258,23 +344,40 @@ async function fetchLogs() {
     if (filters.value.taskId) params.task_id = filters.value.taskId
     if (filters.value.exitCode !== null && filters.value.exitCode !== '') params.exit_code = filters.value.exitCode
     if (filters.value.keyword) params.keyword = filters.value.keyword
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = dateRange.value[0].toISOString().slice(0, 10)
+      params.end_date = dateRange.value[1].toISOString().slice(0, 10)
+    }
 
-    console.log('[Logs] Request params:', params)
     const res = await logApi.search(params)
-    console.log('[Logs] Response:', res.data)
-    console.log('[Logs] total:', res.data.total, 'items length:', res.data.items?.length)
     totalLogs.value = res.data.total
     logs.value = res.data.items
     selectedLogs.value = []
   } catch (e) {
     console.error('[Logs] Fetch error:', e)
-    console.error('[Logs] Error response:', e.response?.data)
+    ElMessage.error('获取日志列表失败')
   } finally {
     loading.value = false
   }
 }
 
 function refreshLogs() {
+  fetchLogs()
+}
+
+function handleSearch() {
+  currentPage.value = 1
+  fetchLogs()
+}
+
+function handleReset() {
+  filters.value = {
+    taskId: null,
+    exitCode: null,
+    keyword: ''
+  }
+  dateRange.value = null
+  currentPage.value = 1
   fetchLogs()
 }
 
@@ -303,28 +406,120 @@ function applyFilters() {
   fetchLogs()
 }
 
+function handleExpandChange(row, expanded) {
+  if (expanded) {
+    expandedRows.value = [row.id]
+  } else {
+    expandedRows.value = []
+  }
+}
+
+function clearSelection() {
+  expandedRows.value = []
+}
+
+function toggleExpand(row) {
+  const idx = expandedRows.value.indexOf(row.id)
+  if (idx >= 0) {
+    expandedRows.value.splice(idx, 1)
+  } else {
+    expandedRows.value = [row.id]
+  }
+}
+
 function getTaskName(taskId) {
   const task = tasks.value.find(t => t.id === taskId)
   return task ? task.name : `任务 #${taskId}`
 }
 
-function formatTime(timeStr) {
+// 精确时间格式 YYYY-MM-DD HH:mm:ss
+function formatTimePrecise(timeStr) {
   if (!timeStr) return '-'
-  return new Date(timeStr).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const date = new Date(timeStr)
+  const pad = n => n.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
+// 时长格式化，自动转换分钟/秒
 function formatDuration(log) {
   if (!log.start_time || !log.end_time) return '-'
   const duration = (new Date(log.end_time) - new Date(log.start_time)) / 1000
-  return duration.toFixed(1)
+  if (duration < 60) {
+    return `${duration.toFixed(1)}秒`
+  } else if (duration < 3600) {
+    const min = Math.floor(duration / 60)
+    const sec = (duration % 60).toFixed(0)
+    return `${min}分${sec}秒`
+  } else {
+    const hour = Math.floor(duration / 3600)
+    const min = Math.floor((duration % 3600) / 60)
+    return `${hour}小时${min}分`
+  }
 }
 
 function getDuration(log) {
   return formatDuration(log)
 }
 
+// 获取日志最后N行
+function getLastLines(output, lines = 10) {
+  if (!output) return '// 无输出'
+  const allLines = output.split('\n')
+  const lastLines = allLines.slice(-lines)
+  return lastLines.join('\n') || '// 无输出'
+}
+
 function handleSelectionChange(selection) {
   selectedLogs.value = selection.map(l => l.id)
+}
+
+async function handleBatchDelete() {
+  if (selectedLogs.value.length === 0) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedLogs.value.length} 条日志吗？此操作不可恢复。`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await logApi.batchDelete(selectedLogs.value)
+
+    ElMessage.success(`成功删除 ${selectedLogs.value.length} 条日志`)
+    selectedLogs.value = []
+    fetchLogs()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('批量删除失败')
+    }
+  }
+}
+
+async function handleSingleDelete(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除日志 #${row.id} 吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await logApi.delete(row.id)
+
+    ElMessage.success('日志删除成功')
+    fetchLogs()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 function viewLogDetail(log) {
@@ -380,9 +575,9 @@ function downloadSingleLog(log) {
   const content = `=== PyCron-Master Log #${log.id} ===
 Task: ${getTaskName(log.task_id)}
 Status: ${log.exit_code === 0 ? 'Success' : 'Failed'}
-Start Time: ${log.start_time}
-End Time: ${log.end_time || '-'}
-Duration: ${formatDuration(log)}s
+Start Time: ${formatTimePrecise(log.start_time)}
+End Time: ${log.end_time ? formatTimePrecise(log.end_time) : '-'}
+Duration: ${formatDuration(log)}
 
 === Output ===
 ${log.output || '// No output'}
@@ -417,6 +612,46 @@ onMounted(() => {
   border-radius: var(--radius-lg);
 }
 
+.bulk-actions-bar {
+  padding: 8px 16px;
+}
+
+.bulk-actions-bar :deep(.el-alert__title) {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.log-expand-preview {
+  padding: var(--space-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin: var(--space-sm) var(--space-md);
+}
+
+.expand-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.expand-content {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-main);
+}
+
 .log-toolbar {
   display: flex;
   gap: var(--space-md);
@@ -437,5 +672,13 @@ onMounted(() => {
   line-height: var(--line-height-base);
   max-height: 60vh;
   overflow: auto;
+}
+
+.gap-2 {
+  gap: var(--space-sm);
+}
+
+.gap-3 {
+  gap: var(--space-md);
 }
 </style>

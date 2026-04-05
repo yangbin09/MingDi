@@ -32,6 +32,8 @@ class Task(Base):
     description = Column(Text, nullable=True)  # AI-generated doc
     use_docker = Column(Boolean, default=False)  # Run in Docker sandbox
     docker_image = Column(String(255), nullable=True)  # Custom Docker image
+    # Log retention settings
+    log_retention_count = Column(Integer, default=100)  # 0 = unlimited
 
     logs = relationship("Log", back_populates="task", cascade="all, delete-orphan")
 

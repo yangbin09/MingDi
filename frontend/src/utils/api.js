@@ -96,6 +96,8 @@ export const logApi = {
   search: (params) => apiClient.get('/logs/search', { params }),
   searchByTask: (taskId, keyword, startDate, endDate, exitCode) =>
     apiClient.get('/logs/search', { params: { task_id: taskId, keyword, start_date: startDate, end_date: endDate, exit_code: exitCode } }),
+  delete: (logId) => apiClient.delete(`/logs/${logId}`),
+  batchDelete: (ids) => apiClient.delete('/logs', { data: ids }),
   download: (logId) => apiClient.get(`/logs/${logId}/download`, { responseType: 'blob' })
 }
 

@@ -16,6 +16,8 @@ class TaskBase(BaseModel):
     description: Optional[str] = None
     use_docker: bool = False
     docker_image: Optional[str] = None
+    # Log retention settings
+    log_retention_count: int = 100
 
 
 class TaskCreate(TaskBase):
@@ -35,6 +37,8 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     use_docker: Optional[bool] = None
     docker_image: Optional[str] = None
+    # Log retention settings
+    log_retention_count: Optional[int] = None
 
 
 class TaskResponse(TaskBase):
@@ -45,8 +49,7 @@ class TaskResponse(TaskBase):
     updated_at: datetime
     webhook_token: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LogBase(BaseModel):

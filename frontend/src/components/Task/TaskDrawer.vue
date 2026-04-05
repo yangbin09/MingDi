@@ -169,6 +169,11 @@
         <el-input-number v-model="formData.timeout" :min="0" placeholder="300" />
       </el-form-item>
 
+      <el-form-item label="日志保留条数">
+        <el-input-number v-model="formData.log_retention_count" :min="0" placeholder="100" />
+        <p class="text-xs mt-1" style="color: var(--text-muted);">设为0则不限制保留条数</p>
+      </el-form-item>
+
       <!-- Auto Doc Generation -->
       <el-alert
         v-if="!isEditing && formData.script_content"
@@ -252,7 +257,8 @@ const formData = reactive({
   webhook_enabled: false,
   description: '',
   use_docker: false,
-  docker_image: null
+  docker_image: null,
+  log_retention_count: 100
 })
 
 const formRules = {
@@ -293,6 +299,7 @@ watch(() => props.task, (task) => {
     formData.description = task.description || ''
     formData.use_docker = task.use_docker || false
     formData.docker_image = task.docker_image
+    formData.log_retention_count = task.log_retention_count ?? 100
     aiGeneratedDoc.value = task.description || ''
     scriptMode.value = 'path'
   }
@@ -366,7 +373,8 @@ async function handleSubmit() {
       webhook_enabled: formData.webhook_enabled,
       description: aiGeneratedDoc.value || formData.description,
       use_docker: formData.use_docker,
-      docker_image: formData.docker_image
+      docker_image: formData.docker_image,
+      log_retention_count: formData.log_retention_count
     }
 
     // If using editor mode, save the script first
@@ -402,6 +410,7 @@ function resetForm() {
   formData.description = ''
   formData.use_docker = false
   formData.docker_image = null
+  formData.log_retention_count = 100
   aiDescription.value = ''
   aiReviewResult.value = null
   aiGeneratedDoc.value = ''

@@ -82,6 +82,7 @@ def migrate_database():
         'description': 'ALTER TABLE tasks ADD COLUMN description TEXT',
         'use_docker': 'ALTER TABLE tasks ADD COLUMN use_docker BOOLEAN DEFAULT 0',
         'docker_image': 'ALTER TABLE tasks ADD COLUMN docker_image TEXT',
+        'log_retention_count': 'ALTER TABLE tasks ADD COLUMN log_retention_count INTEGER DEFAULT 100',
     }
 
     for col, sql in new_task_columns.items():
@@ -528,6 +529,30 @@ def get_log(log_id: int, db: Session = Depends(get_db)):
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
     return log
+
+
+@app.delete("/logs/{log_id}")
+def delete_log(log_id: int, db: Session = Depends(get_db)):
+    """Delete a specific log entry"""
+    log = db.query(Log).filter(Log.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Log not found")
+    db.delete(log)
+    db.commit()
+    return {"message": "Log deleted successfully", "id": log_id}
+
+
+@app.delete("/logs")
+def batch_delete_logs(ids: List[int] = Body(...), db: Session = Depends(get_db)):
+    """Batch delete log entries by IDs"""
+    deleted_count = 0
+    for log_id in ids:
+        log = db.query(Log).filter(Log.id == log_id).first()
+        if log:
+            db.delete(log)
+            deleted_count += 1
+    db.commit()
+    return {"message": f"Deleted {deleted_count} logs", "count": deleted_count}
 
 
 @app.get("/tasks/{task_id}/logs/stream")
