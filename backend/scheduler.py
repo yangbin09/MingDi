@@ -201,23 +201,28 @@ def cleanup_old_logs(db, task_id: int, retention_count: int):
     if retention_count <= 0:
         return  # Unlimited retention
 
-    # Count logs for this task
-    total_logs = db.query(Log).filter(Log.task_id == task_id).count()
+    try:
+        # Count logs for this task
+        total_logs = db.query(Log).filter(Log.task_id == task_id).count()
 
-    if total_logs > retention_count:
-        # Get IDs of logs to delete (oldest ones)
-        logs_to_delete = (
-            db.query(Log.id)
-            .filter(Log.task_id == task_id)
-            .order_by(Log.start_time.asc())
-            .limit(total_logs - retention_count)
-            .all()
-        )
-        log_ids = [log.id for log in logs_to_delete]
+        if total_logs > retention_count:
+            # Get IDs of logs to delete (oldest ones)
+            logs_to_delete = (
+                db.query(Log.id)
+                .filter(Log.task_id == task_id)
+                .order_by(Log.start_time.asc())
+                .limit(total_logs - retention_count)
+                .all()
+            )
+            log_ids = [log.id for log in logs_to_delete]
 
-        # Delete old logs
-        db.query(Log).filter(Log.id.in_(log_ids)).delete(synchronize_session=False)
-        logger.info(f"Cleaned up {len(log_ids)} old logs for task {task_id}")
+            # Delete old logs and commit
+            db.query(Log).filter(Log.id.in_(log_ids)).delete(synchronize_session=False)
+            db.commit()
+            logger.info(f"Cleaned up {len(log_ids)} old logs for task {task_id}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup old logs for task {task_id}: {e}")
+        db.rollback()
 
 
 def add_task_job(task: Task):

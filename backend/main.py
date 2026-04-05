@@ -1356,6 +1356,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
         description=task_data.description,
         use_docker=task_data.use_docker,
         docker_image=task_data.docker_image,
+        log_retention_count=task_data.log_retention_count or 100,
     )
     db.add(task)
     db.commit()
@@ -1397,6 +1398,8 @@ def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends(get_d
         task.use_docker = task_data.use_docker
     if task_data.docker_image is not None:
         task.docker_image = task_data.docker_image
+    if task_data.log_retention_count is not None:
+        task.log_retention_count = task_data.log_retention_count
 
     db.commit()
     db.refresh(task)
