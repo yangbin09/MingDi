@@ -74,11 +74,11 @@
       </el-row>
 
       <!-- Bulk Actions Bar -->
-      <el-row v-if="selectedLogs.length > 0" :gutter="16" class="mt-4">
+      <el-row v-if="selectedLogIds.length > 0" :gutter="16" class="mt-4">
         <el-col :span="24">
           <el-alert type="info" :closable="false" class="bulk-actions-bar">
             <template #title>
-              <span>已选择 <strong>{{ selectedLogs.length }}</strong> 项&nbsp;&nbsp;</span>
+              <span>已选择 <strong>{{ selectedLogIds.length }}</strong> 项&nbsp;&nbsp;</span>
               <el-button type="danger" plain size="small" @click="handleBatchDelete">
                 <el-icon><Delete /></el-icon>
                 批量删除
@@ -160,12 +160,12 @@
                 </el-button>
               </el-tooltip>
               <el-tooltip v-if="getStatus(row) === 'failed'" content="AI 诊断" placement="top">
-                <el-button size="small" type="warning" plain @click="diagnoseLog(row)" :loading="diagnosingLogId === row.id">
+                <el-button size="small" type="warning" plain @click="handleDiagnoseLog(row)" :loading="diagnosingLogId === row.id">
                   <el-icon><MagicStick /></el-icon>
                 </el-button>
               </el-tooltip>
               <el-tooltip content="下载" placement="top">
-                <el-button size="small" type="success" plain @click="downloadSingleLog(row)">
+                <el-button size="small" type="success" plain @click="handleDownloadSingleLog(row)">
                   <el-icon><Download /></el-icon>
                 </el-button>
               </el-tooltip>
@@ -206,13 +206,13 @@
         <el-button
           v-if="currentLog && currentLog.output && currentLog.output.length > 500"
           type="primary"
-          @click="summarizeCurrentLog"
+          @click="handleSummarizeCurrentLog"
           :loading="aiSummarizing"
         >
           <el-icon><MagicStick /></el-icon>
           AI 摘要
         </el-button>
-        <el-button @click="downloadCurrentLog">
+        <el-button @click="handleDownloadCurrentLog">
           <el-icon><Download /></el-icon>
           下载
         </el-button>
@@ -264,437 +264,124 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, onMounted, watch } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import {
-  Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, DArrowRight, Loading
+  Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, Loading
 } from '@element-plus/icons-vue'
-import { taskApi, logApi, aiApi } from '../utils/api.js'
-import { useDebounce } from '../composables/useDebounce.js'
+import { useLogSearch } from '../composables/useLogSearch.ts'
+import { useLogDetail } from '../composables/useLogDetail.ts'
+import { useLogStream } from '../composables/useLogStream.ts'
 
-const { debounced: debouncedSearch } = useDebounce(() => applyFilters(), 300)
+// 日志搜索与分页
+const {
+  loading,
+  logs,
+  tasks,
+  selectedLogIds,
+  filters,
+  currentPage,
+  pageSize,
+  totalLogs,
+  totalPages,
+  expandedRows,
+  dateRange,
+  fetchTasks,
+  fetchLogs,
+  applyFilters,
+  resetFilters,
+  handlePageChange,
+  handleSizeChange,
+  handleExpandChange,
+  toggleExpand,
+  clearSelection,
+  handleSelectionChange,
+  batchDeleteLogs,
+  deleteSingleLog
+} = useLogSearch()
 
-const loading = ref(false)
-const logs = ref([])
-const tasks = ref([])
-const selectedLogs = ref([])
-const showLogDrawer = ref(false)
-const currentLog = ref(null)
-const aiSummary = ref(null)
-const aiDiagnosis = ref(null)
-const aiSummarizing = ref(false)
-const diagnosingLogId = ref(null)
-const dateRange = ref(null)
-const expandedRows = ref([])
-const autoRefreshInterval = ref(null)
-let autoRefreshTimer = null
-let liveDurationTimer = null
+// 日志详情与 AI 功能
+const {
+  currentLog,
+  showLogDrawer,
+  aiSummary,
+  aiDiagnosis,
+  aiSummarizing,
+  diagnosingLogId,
+  getTaskName,
+  formatTimePrecise,
+  formatDuration,
+  getLiveDuration,
+  getLastLines,
+  getStatus,
+  getStatusLabel,
+  getStatusTagType,
+  downloadSingleLog,
+  downloadCurrentLog,
+  summarizeLog,
+  diagnoseError,
+  viewLogDetail,
+  closeDrawer
+} = useLogDetail()
 
-const filters = ref({
-  taskId: null,
-  statusFilter: null,  // running | 0 | -99 | -1 | null
-  keyword: ''
-})
+// 自动刷新与实时时长
+const {
+  autoRefreshInterval,
+  startAutoRefresh,
+  stopAutoRefresh,
+  startLiveDurationRefresh,
+  stopLiveDurationRefresh,
+  cleanupAll
+} = useLogStream()
 
-const currentPage = ref(1)
-const pageSize = ref(20)
-const totalLogs = ref(0)
-
-const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
-
-// 自动刷新逻辑
-function startAutoRefresh() {
-  stopAutoRefresh()
-  if (autoRefreshInterval.value) {
-    autoRefreshTimer = setInterval(() => {
-      fetchLogs()
-    }, autoRefreshInterval.value)
-  }
-}
-
-function stopAutoRefresh() {
-  if (autoRefreshTimer) {
-    clearInterval(autoRefreshTimer)
-    autoRefreshTimer = null
-  }
-}
-
-// 实时时长刷新：每秒更新运行中任务的时长显示
-function startLiveDurationRefresh() {
-  stopLiveDurationRefresh()
-  liveDurationTimer = setInterval(() => {
-    // 触发响应式更新 - 通过强制更新组件Key实现
-    logs.value = [...logs.value]
-  }, 1000)
-}
-
-function stopLiveDurationRefresh() {
-  if (liveDurationTimer) {
-    clearInterval(liveDurationTimer)
-    liveDurationTimer = null
-  }
-}
-
-watch(autoRefreshInterval, (newVal, oldVal) => {
-  if (oldVal) stopAutoRefresh()
-  if (newVal) startAutoRefresh()
-})
-
-onUnmounted(() => {
-  stopAutoRefresh()
-  stopLiveDurationRefresh()
-})
-
-async function fetchTasks() {
-  try {
-    const res = await taskApi.list()
-    tasks.value = res.data
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-async function fetchLogs() {
-  loading.value = true
-  try {
-    const params = { page: currentPage.value, size: pageSize.value }
-    if (filters.value.taskId) params.task_id = filters.value.taskId
-
-    // 状态过滤映射
-    const status = filters.value.statusFilter
-    if (status === 'running') {
-      params.is_running = true
-    } else if (status === -99) {
-      // -99 表示失败（非0退出码）
-      params.exit_code_non_zero = true
-    } else if (status !== null) {
-      params.exit_code = status
-    }
-
-    if (filters.value.keyword) params.keyword = filters.value.keyword
-    if (dateRange.value && dateRange.value.length === 2) {
-      params.start_date = dateRange.value[0].toISOString().slice(0, 10)
-      params.end_date = dateRange.value[1].toISOString().slice(0, 10)
-    }
-
-    const res = await logApi.search(params)
-    totalLogs.value = res.data.total
-    logs.value = res.data.items
-    selectedLogs.value = []
-  } catch (e) {
-    console.error('[Logs] Fetch error:', e)
-    ElMessage.error('获取日志列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
+// 事件处理函数
 function refreshLogs() {
   fetchLogs()
 }
 
 function handleSearch() {
-  currentPage.value = 1
-  fetchLogs()
+  applyFilters()
 }
 
 function handleReset() {
-  filters.value = {
-    taskId: null,
-    statusFilter: null,
-    keyword: ''
-  }
-  dateRange.value = null
-  currentPage.value = 1
-  fetchLogs()
-}
-
-function handleFilterChange() {
-  currentPage.value = 1
-  fetchLogs()
-}
-
-function handlePageChange(page) {
-  currentPage.value = page
-  fetchLogs()
-}
-
-function handleSizeChange(size) {
-  pageSize.value = size
-  currentPage.value = 1
-  fetchLogs()
-}
-
-function handleDebouncedSearch() {
-  debouncedSearch()
-}
-
-function applyFilters() {
-  currentPage.value = 1
-  fetchLogs()
-}
-
-function handleExpandChange(row, expanded) {
-  if (expanded) {
-    expandedRows.value = [row.id]
-  } else {
-    expandedRows.value = []
-  }
-}
-
-function clearSelection() {
-  expandedRows.value = []
-}
-
-function toggleExpand(row) {
-  const idx = expandedRows.value.indexOf(row.id)
-  if (idx >= 0) {
-    expandedRows.value.splice(idx, 1)
-  } else {
-    expandedRows.value = [row.id]
-  }
-}
-
-function getTaskName(taskId) {
-  const task = tasks.value.find(t => t.id === taskId)
-  return task ? task.name : `任务 #${taskId}`
-}
-
-// 精确时间格式 YYYY-MM-DD HH:mm:ss
-function formatTimePrecise(timeStr) {
-  if (!timeStr) return '-'
-  const date = new Date(timeStr)
-  const pad = n => n.toString().padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-}
-
-// ========== 状态机逻辑 ==========
-// 状态判断：pending(等待)、running(运行中)、success(成功)、failed(失败)、timeout(超时)、cancelled(已取消)
-function getStatus(log) {
-  // 运行中：还没有结束时间（exit_code 始终为 null 直到结束）
-  if (!log.end_time) return 'running'
-  // 已结束：exit_code === -1 表示超时
-  if (log.exit_code === -1) return 'timeout'
-  // 已结束：exit_code === 0 表示成功
-  if (log.exit_code === 0) return 'success'
-  // 已结束且非0退出码：表示失败
-  if (log.exit_code !== null) return 'failed'
-  // 已结束但无 exit_code：已取消
-  return 'cancelled'
-}
-
-function getStatusLabel(log) {
-  const status = getStatus(log)
-  const labels = {
-    running: '运行中',
-    success: '成功',
-    failed: '失败',
-    timeout: '超时',
-    cancelled: '已取消',
-    pending: '等待中'
-  }
-  return labels[status] || '未知'
-}
-
-function getStatusTagType(log) {
-  const status = getStatus(log)
-  const types = {
-    running: 'primary',   // 蓝色
-    success: 'success',  // 绿色
-    failed: 'danger',    // 红色
-    timeout: 'warning',  // 橙色
-    cancelled: 'info',   // 灰色
-    pending: 'info'      // 灰色
-  }
-  return types[status] || 'info'
-}
-
-// 实时时长计算：运行中任务动态跳动
-function getLiveDuration(log) {
-  // 已结束：直接格式化
-  if (log.end_time) return formatDuration(log)
-  // 运行中：实时计算
-  if (log.start_time && !log.end_time) {
-    const start = new Date(log.start_time).getTime()
-    const now = Date.now()
-    const seconds = Math.floor((now - start) / 1000)
-    if (seconds < 60) return `${seconds}秒`
-    if (seconds < 3600) {
-      const min = Math.floor(seconds / 60)
-      const sec = seconds % 60
-      return `${min}分${sec}秒`
-    }
-    const hour = Math.floor(seconds / 3600)
-    const min = Math.floor((seconds % 3600) / 60)
-    return `${hour}小时${min}分`
-  }
-  return '-'
-}
-
-// 时长格式化，自动转换分钟/秒
-function formatDuration(log) {
-  if (!log.start_time || !log.end_time) return '-'
-  const duration = (new Date(log.end_time) - new Date(log.start_time)) / 1000
-  if (duration < 60) {
-    return `${duration.toFixed(1)}秒`
-  } else if (duration < 3600) {
-    const min = Math.floor(duration / 60)
-    const sec = (duration % 60).toFixed(0)
-    return `${min}分${sec}秒`
-  } else {
-    const hour = Math.floor(duration / 3600)
-    const min = Math.floor((duration % 3600) / 60)
-    return `${hour}小时${min}分`
-  }
-}
-
-function getDuration(log) {
-  return formatDuration(log)
-}
-
-// 获取日志最后N行
-function getLastLines(output, lines = 10) {
-  if (!output) return '// 无输出'
-  const allLines = output.split('\n')
-  const lastLines = allLines.slice(-lines)
-  return lastLines.join('\n') || '// 无输出'
-}
-
-function handleSelectionChange(selection) {
-  selectedLogs.value = selection.map(l => l.id)
+  resetFilters()
 }
 
 async function handleBatchDelete() {
-  if (selectedLogs.value.length === 0) return
-
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedLogs.value.length} 条日志吗？此操作不可恢复。`,
-      '批量删除确认',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    await logApi.batchDelete(selectedLogs.value)
-
-    ElMessage.success(`成功删除 ${selectedLogs.value.length} 条日志`)
-    selectedLogs.value = []
-    fetchLogs()
-  } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error('批量删除失败')
-    }
-  }
+  await batchDeleteLogs()
 }
 
 async function handleSingleDelete(row) {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除日志 #${row.id} 吗？此操作不可恢复。`,
-      '删除确认',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    await logApi.delete(row.id)
-
-    ElMessage.success('日志删除成功')
-    fetchLogs()
-  } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
+  await deleteSingleLog(row.id)
+  fetchLogs()
 }
 
-function viewLogDetail(log) {
-  currentLog.value = log
-  aiSummary.value = null
-  aiDiagnosis.value = null
-  showLogDrawer.value = true
+async function handleDiagnoseLog(log) {
+  await diagnoseError(log)
 }
 
-async function summarizeCurrentLog() {
-  if (!currentLog.value?.output || aiSummarizing.value) return
-  aiSummarizing.value = true
-  try {
-    const res = await aiApi.summarizeLog(currentLog.value.output)
-    aiSummary.value = res.data.summary
-  } catch (e) {
-    ElMessage.error('AI 摘要失败')
-  } finally {
-    aiSummarizing.value = false
-  }
+function handleDownloadSingleLog(log) {
+  downloadSingleLog(log, tasks.value)
 }
 
-async function summarizeSelectedLogs() {
-  if (selectedLogs.value.length === 0 || aiSummarizing.value) return
-  const selectedLogData = logs.value.filter(l => selectedLogs.value.includes(l.id))
-  const combinedOutput = selectedLogData.map(l => `=== ${getTaskName(l.task_id)} (Log #${l.id}) ===\n${l.output || '// 无输出'}`).join('\n\n')
-  aiSummarizing.value = true
-  try {
-    const res = await aiApi.summarizeLog(combinedOutput)
-    aiSummary.value = res.data.summary
-  } catch (e) {
-    ElMessage.error('AI 摘要失败')
-  } finally {
-    aiSummarizing.value = false
-  }
+function handleDownloadCurrentLog() {
+  downloadCurrentLog(tasks.value)
 }
 
-async function diagnoseLog(log) {
-  if (diagnosingLogId.value) return
-  diagnosingLogId.value = log.id
-  aiDiagnosis.value = null
-  try {
-    const res = await aiApi.diagnoseError(log.output || '', '')
-    aiDiagnosis.value = res.data.diagnosis
-  } catch (e) {
-    ElMessage.error('AI 诊断失败')
-  } finally {
-    diagnosingLogId.value = null
-  }
+async function handleSummarizeCurrentLog() {
+  await summarizeLog(currentLog.value)
 }
 
-function downloadSingleLog(log) {
-  const content = `=== PyCron-Master Log #${log.id} ===
-Task: ${getTaskName(log.task_id)}
-Status: ${getStatusLabel(log)}
-Start Time: ${formatTimePrecise(log.start_time)}
-End Time: ${log.end_time ? formatTimePrecise(log.end_time) : '-'}
-Duration: ${log.end_time ? formatDuration(log) : 'In Progress'}
-
-=== Output ===
-${log.output || '// No output'}
-`
-  downloadFile(content, `log_${log.id}.log`)
-}
-
-function downloadCurrentLog() {
-  if (!currentLog.value) return
-  downloadSingleLog(currentLog.value)
-}
-
-function downloadFile(content, filename) {
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
+// 监听自动刷新间隔变化
+watch(autoRefreshInterval, (newVal, oldVal) => {
+  if (oldVal) stopAutoRefresh()
+  if (newVal) startAutoRefresh(fetchLogs)
+})
 
 onMounted(() => {
   fetchTasks()
   fetchLogs()
-  startLiveDurationRefresh()
+  startLiveDurationRefresh(logs)
 })
 </script>
 

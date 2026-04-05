@@ -62,6 +62,7 @@ const pageSize = ref(20)
 const totalLogs = ref(0)
 
 const expandedRows = ref<number[]>([])
+const dateRange = ref<[Date, Date] | null>(null)
 
 // ============= 计算属性 =============
 const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
@@ -102,6 +103,11 @@ async function fetchLogs(): Promise<void> {
       params.keyword = filters.value.keyword
     }
 
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.start_date = dateRange.value[0].toISOString().slice(0, 10)
+      params.end_date = dateRange.value[1].toISOString().slice(0, 10)
+    }
+
     const res = await logApi.search(params)
     totalLogs.value = res.data.total
     logs.value = res.data.items
@@ -126,6 +132,7 @@ function resetFilters(): void {
     statusFilter: null,
     keyword: ''
   }
+  dateRange.value = null
   currentPage.value = 1
   fetchLogs()
 }
@@ -209,6 +216,7 @@ export function useLogSearch() {
     totalLogs,
     totalPages,
     expandedRows,
+    dateRange,
 
     // 方法
     fetchTasks,
