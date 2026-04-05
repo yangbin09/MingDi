@@ -490,6 +490,8 @@ def search_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     exit_code: Optional[int] = None,
+    exit_code_non_zero: bool = False,
+    is_running: bool = False,
     page: int = 1,
     size: int = 20,
     db: Session = Depends(get_db)
@@ -502,6 +504,12 @@ def search_logs(
         query = query.filter(Log.task_id == task_id)
     if exit_code is not None:
         query = query.filter(Log.exit_code == exit_code)
+    if exit_code_non_zero:
+        # 过滤非0退出码（失败），排除 null（运行中）和 -1（超时）
+        query = query.filter(Log.exit_code != None, Log.exit_code != 0, Log.exit_code != -1)
+    if is_running:
+        # 运行中：exit_code 和 end_time 都为 null
+        query = query.filter(Log.exit_code == None, Log.end_time == None)
     if start_date:
         query = query.filter(Log.start_time >= start_date)
     if end_date:

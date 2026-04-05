@@ -29,10 +29,12 @@
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="8" :md="6">
-          <el-select v-model="filters.exitCode" placeholder="状态" clearable>
+          <el-select v-model="filters.statusFilter" placeholder="状态" clearable>
             <el-option label="全部" :value="null" />
-            <el-option label="成功" :value="0" />
-            <el-option label="失败" :value="1" />
+            <el-option label="运行中" value="running" />
+            <el-option label="成功 (exit 0)" :value="0" />
+            <el-option label="失败 (exit ≠0)" :value="-99" />
+            <el-option label="超时 (exit -1)" :value="-1" />
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="16" :md="12">
@@ -117,29 +119,23 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="" width="50" align="center">
-          <template #default="{ row }">
-            <el-tooltip :content="expandedRows.includes(row.id) ? '收起预览' : '展开预览'" placement="top">
-              <el-button
-                size="small"
-                :icon="expandedRows.includes(row.id) ? 'DArrowRight' : 'DArrowRight'"
-                :type="expandedRows.includes(row.id) ? 'primary' : 'default'"
-                link
-                @click="toggleExpand(row)"
-              />
-            </el-tooltip>
-          </template>
-        </el-table-column>
         <el-table-column label="任务" min-width="200">
           <template #default="{ row }">
-            <div class="font-medium">{{ getTaskName(row.task_id) }}</div>
+            <div class="font-medium" @click="toggleExpand(row)" style="cursor: pointer;">
+              {{ getTaskName(row.task_id) }}
+            </div>
             <div class="text-xs" style="color: var(--text-muted);">Log #{{ row.id }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="row.exit_code === 0 ? 'success' : 'danger'" size="small">
-              {{ row.exit_code === 0 ? '成功' : '失败' }}
+            <el-tag
+              :type="getStatusTagType(row)"
+              size="small"
+              :disable-transitions="false"
+            >
+              <el-icon v-if="getStatus(row) === 'running'" class="is-loading"><Loading /></el-icon>
+              {{ getStatusLabel(row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -150,10 +146,12 @@
         </el-table-column>
         <el-table-column label="时长" width="120">
           <template #default="{ row }">
-            <span class="font-mono">{{ formatDuration(row) }}</span>
+            <span class="font-mono" :style="{ color: getStatus(row) === 'running' ? 'var(--color-primary)' : 'var(--text-main)' }">
+              {{ getLiveDuration(row) }}
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="right">
+        <el-table-column label="操作" width="180" align="right">
           <template #default="{ row }">
             <el-button-group>
               <el-tooltip content="查看详情" placement="top">
@@ -161,7 +159,7 @@
                   <el-icon><View /></el-icon>
                 </el-button>
               </el-tooltip>
-              <el-tooltip v-if="row.exit_code !== 0" content="AI 诊断" placement="top">
+              <el-tooltip v-if="getStatus(row) === 'failed'" content="AI 诊断" placement="top">
                 <el-button size="small" type="warning" plain @click="diagnoseLog(row)" :loading="diagnosingLogId === row.id">
                   <el-icon><MagicStick /></el-icon>
                 </el-button>
@@ -245,14 +243,15 @@
       <div v-if="currentLog" class="log-metadata">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">
-            <el-tag :type="currentLog.exit_code === 0 ? 'success' : 'danger'">
-              {{ currentLog.exit_code === 0 ? '成功' : '失败' }} (exit {{ currentLog.exit_code }})
+            <el-tag :type="getStatusTagType(currentLog)">
+              <el-icon v-if="getStatus(currentLog) === 'running'" class="is-loading"><Loading /></el-icon>
+              {{ getStatusLabel(currentLog) }} (exit {{ currentLog.exit_code ?? 'running' }})
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ formatTimePrecise(currentLog.start_time) }}</el-descriptions-item>
           <el-descriptions-item v-if="currentLog.end_time" label="结束时间">{{ formatTimePrecise(currentLog.end_time) }}</el-descriptions-item>
-          <el-descriptions-item v-if="getDuration(currentLog)" label="时长">
-            <span class="font-mono">{{ formatDuration(currentLog) }}</span>
+          <el-descriptions-item label="时长">
+            <span class="font-mono">{{ currentLog.end_time ? formatDuration(currentLog) : getLiveDuration(currentLog) }}</span>
           </el-descriptions-item>
         </el-descriptions>
       </div>
@@ -268,7 +267,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, DArrowRight
+  Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, DArrowRight, Loading
 } from '@element-plus/icons-vue'
 import { taskApi, logApi, aiApi } from '../utils/api.js'
 import { useDebounce } from '../composables/useDebounce.js'
@@ -289,10 +288,11 @@ const dateRange = ref(null)
 const expandedRows = ref([])
 const autoRefreshInterval = ref(null)
 let autoRefreshTimer = null
+let liveDurationTimer = null
 
 const filters = ref({
   taskId: null,
-  exitCode: null,
+  statusFilter: null,  // running | 0 | -99 | -1 | null
   keyword: ''
 })
 
@@ -319,6 +319,22 @@ function stopAutoRefresh() {
   }
 }
 
+// 实时时长刷新：每秒更新运行中任务的时长显示
+function startLiveDurationRefresh() {
+  stopLiveDurationRefresh()
+  liveDurationTimer = setInterval(() => {
+    // 触发响应式更新 - 通过强制更新组件Key实现
+    logs.value = [...logs.value]
+  }, 1000)
+}
+
+function stopLiveDurationRefresh() {
+  if (liveDurationTimer) {
+    clearInterval(liveDurationTimer)
+    liveDurationTimer = null
+  }
+}
+
 watch(autoRefreshInterval, (newVal, oldVal) => {
   if (oldVal) stopAutoRefresh()
   if (newVal) startAutoRefresh()
@@ -326,6 +342,7 @@ watch(autoRefreshInterval, (newVal, oldVal) => {
 
 onUnmounted(() => {
   stopAutoRefresh()
+  stopLiveDurationRefresh()
 })
 
 async function fetchTasks() {
@@ -342,7 +359,18 @@ async function fetchLogs() {
   try {
     const params = { page: currentPage.value, size: pageSize.value }
     if (filters.value.taskId) params.task_id = filters.value.taskId
-    if (filters.value.exitCode !== null && filters.value.exitCode !== '') params.exit_code = filters.value.exitCode
+
+    // 状态过滤映射
+    const status = filters.value.statusFilter
+    if (status === 'running') {
+      params.is_running = true
+    } else if (status === -99) {
+      // -99 表示失败（非0退出码）
+      params.exit_code_non_zero = true
+    } else if (status !== null) {
+      params.exit_code = status
+    }
+
     if (filters.value.keyword) params.keyword = filters.value.keyword
     if (dateRange.value && dateRange.value.length === 2) {
       params.start_date = dateRange.value[0].toISOString().slice(0, 10)
@@ -373,7 +401,7 @@ function handleSearch() {
 function handleReset() {
   filters.value = {
     taskId: null,
-    exitCode: null,
+    statusFilter: null,
     keyword: ''
   }
   dateRange.value = null
@@ -438,6 +466,69 @@ function formatTimePrecise(timeStr) {
   const date = new Date(timeStr)
   const pad = n => n.toString().padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+// ========== 状态机逻辑 ==========
+// 状态判断：pending(等待)、running(运行中)、success(成功)、failed(失败)、timeout(超时)、cancelled(已取消)
+function getStatus(log) {
+  // 运行中：还没有结束时间（exit_code 始终为 null 直到结束）
+  if (!log.end_time) return 'running'
+  // 已结束：exit_code === -1 表示超时
+  if (log.exit_code === -1) return 'timeout'
+  // 已结束：exit_code === 0 表示成功
+  if (log.exit_code === 0) return 'success'
+  // 已结束且非0退出码：表示失败
+  if (log.exit_code !== null) return 'failed'
+  // 已结束但无 exit_code：已取消
+  return 'cancelled'
+}
+
+function getStatusLabel(log) {
+  const status = getStatus(log)
+  const labels = {
+    running: '运行中',
+    success: '成功',
+    failed: '失败',
+    timeout: '超时',
+    cancelled: '已取消',
+    pending: '等待中'
+  }
+  return labels[status] || '未知'
+}
+
+function getStatusTagType(log) {
+  const status = getStatus(log)
+  const types = {
+    running: 'primary',   // 蓝色
+    success: 'success',  // 绿色
+    failed: 'danger',    // 红色
+    timeout: 'warning',  // 橙色
+    cancelled: 'info',   // 灰色
+    pending: 'info'      // 灰色
+  }
+  return types[status] || 'info'
+}
+
+// 实时时长计算：运行中任务动态跳动
+function getLiveDuration(log) {
+  // 已结束：直接格式化
+  if (log.end_time) return formatDuration(log)
+  // 运行中：实时计算
+  if (log.start_time && !log.end_time) {
+    const start = new Date(log.start_time).getTime()
+    const now = Date.now()
+    const seconds = Math.floor((now - start) / 1000)
+    if (seconds < 60) return `${seconds}秒`
+    if (seconds < 3600) {
+      const min = Math.floor(seconds / 60)
+      const sec = seconds % 60
+      return `${min}分${sec}秒`
+    }
+    const hour = Math.floor(seconds / 3600)
+    const min = Math.floor((seconds % 3600) / 60)
+    return `${hour}小时${min}分`
+  }
+  return '-'
 }
 
 // 时长格式化，自动转换分钟/秒
@@ -574,10 +665,10 @@ async function diagnoseLog(log) {
 function downloadSingleLog(log) {
   const content = `=== PyCron-Master Log #${log.id} ===
 Task: ${getTaskName(log.task_id)}
-Status: ${log.exit_code === 0 ? 'Success' : 'Failed'}
+Status: ${getStatusLabel(log)}
 Start Time: ${formatTimePrecise(log.start_time)}
 End Time: ${log.end_time ? formatTimePrecise(log.end_time) : '-'}
-Duration: ${formatDuration(log)}
+Duration: ${log.end_time ? formatDuration(log) : 'In Progress'}
 
 === Output ===
 ${log.output || '// No output'}
@@ -603,6 +694,7 @@ function downloadFile(content, filename) {
 onMounted(() => {
   fetchTasks()
   fetchLogs()
+  startLiveDurationRefresh()
 })
 </script>
 
