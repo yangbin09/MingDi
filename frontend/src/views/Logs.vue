@@ -297,7 +297,8 @@ const {
   clearSelection,
   handleSelectionChange,
   batchDeleteLogs,
-  deleteSingleLog
+  deleteSingleLog,
+  cancelPendingRequests
 } = useLogSearch()
 
 // 日志详情与 AI 功能
@@ -381,10 +382,11 @@ watch(autoRefreshInterval, (newVal, oldVal) => {
 onMounted(() => {
   fetchTasks()
   fetchLogs()
-  startLiveDurationRefresh(logs)
+  startLiveDurationRefresh()
 })
 
 onUnmounted(() => {
+  cancelPendingRequests()
   cleanupAll()
 })
 </script>

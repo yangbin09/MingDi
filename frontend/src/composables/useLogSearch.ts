@@ -59,6 +59,9 @@ const totalLogs = ref(0)
 const expandedRows = ref<number[]>([])
 const dateRange = ref<[Date, Date] | null>(null)
 
+// ============= Abort 控制 =============
+let currentController: AbortController | null = null
+
 // ============= 计算属性 =============
 const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
 
@@ -73,6 +76,12 @@ async function fetchTasksAction(): Promise<void> {
 }
 
 async function fetchLogsAction(): Promise<void> {
+  // 取消之前的请求
+  if (currentController) {
+    currentController.abort()
+  }
+  currentController = new AbortController()
+
   loading.value = true
   try {
     const params: LogSearchParams = {
@@ -106,7 +115,11 @@ async function fetchLogsAction(): Promise<void> {
     totalLogs.value = res.data.total
     logs.value = res.data.items
     selectedLogIds.value = []
-  } catch (e) {
+  } catch (e: any) {
+    // 忽略被取消的请求
+    if (e.name === 'AbortError' || e.name === 'CanceledError') {
+      return
+    }
     console.error('[useLogSearch] fetchLogs error:', e)
     ElMessage.error('获取日志列表失败')
   } finally {
@@ -196,6 +209,14 @@ async function deleteSingleLogAction(logId: number): Promise<boolean> {
   }
 }
 
+// ============= 清理 =============
+function cancelPendingRequests(): void {
+  if (currentController) {
+    currentController.abort()
+    currentController = null
+  }
+}
+
 // ============= 导出函数 =============
 export function useLogSearch() {
   return {
@@ -224,6 +245,7 @@ export function useLogSearch() {
     clearSelection: clearSelectionAction,
     handleSelectionChange: handleSelectionChangeAction,
     batchDeleteLogs: batchDeleteLogsAction,
-    deleteSingleLog: deleteSingleLogAction
+    deleteSingleLog: deleteSingleLogAction,
+    cancelPendingRequests
   }
 }
