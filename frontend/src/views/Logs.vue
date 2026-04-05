@@ -3,7 +3,7 @@
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold" style="color: var(--text-main);">
+        <h1 class="text-xl font-bold" style="color: var(--text-main);">
           <el-icon class="mr-2"><Document /></el-icon>
           日志中心
         </h1>
@@ -16,20 +16,25 @@
     <el-card shadow="never" class="filter-card">
       <el-row :gutter="16" align="middle">
         <el-col :xs="24" :sm="8" :md="6">
-          <el-select v-model="filters.taskId" placeholder="选择任务" clearable @change="applyFilters">
+          <el-select v-model="filters.taskId" placeholder="选择任务" clearable @change="handleFilterChange">
             <el-option label="全部任务" :value="null" />
             <el-option v-for="task in tasks" :key="task.id" :label="task.name" :value="task.id" />
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="8" :md="6">
-          <el-select v-model="filters.exitCode" placeholder="状态" clearable @change="applyFilters">
+          <el-select v-model="filters.exitCode" placeholder="状态" clearable @change="handleFilterChange">
             <el-option label="全部" :value="null" />
             <el-option label="成功" :value="0" />
             <el-option label="失败" :value="1" />
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="16" :md="12">
-          <el-input v-model="filters.keyword" placeholder="搜索日志内容..." @keyup.enter="applyFilters" clearable>
+          <el-input
+            v-model="filters.keyword"
+            placeholder="搜索日志内容..."
+            clearable
+            @input="handleDebouncedSearch"
+          >
             <template #prefix>
               <el-icon><Search /></el-icon>
             </template>
@@ -44,7 +49,7 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            @change="applyFilters"
+            @change="handleFilterChange"
             style="width: 100%"
           />
         </el-col>
@@ -70,10 +75,8 @@
         v-else
         :data="logs"
         stripe
-        style="width: 100%"
         @selection-change="handleSelectionChange"
         :header-cell-style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
-        :row-style="{ borderBottom: '1px solid var(--border-subtle)' }"
       >
         <el-table-column type="selection" width="50" />
         <el-table-column label="任务" min-width="200">
@@ -121,7 +124,7 @@
       </el-table>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex justify-between items-center mt-4">
+      <div v-if="totalLogs > 0" class="flex justify-between items-center mt-4">
         <span class="text-sm" style="color: var(--text-muted);">
           第 {{ currentPage }} / {{ totalPages }} 页，共 {{ totalLogs }} 条
         </span>
@@ -129,8 +132,10 @@
           v-model:current-page="currentPage"
           :page-size="pageSize"
           :total="totalLogs"
-          layout="prev, pager, next"
-          @current-change="applyFilters"
+          layout="prev, pager, next, sizes"
+          :page-sizes="[10, 20, 50, 100]"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </el-card>
@@ -141,7 +146,6 @@
       :title="'日志详情 - ' + (currentLog ? getTaskName(currentLog.task_id) : '')"
       size="700px"
     >
-      <!-- Log Toolbar -->
       <div class="log-toolbar">
         <el-button
           v-if="currentLog && currentLog.output && currentLog.output.length > 500"
@@ -158,10 +162,9 @@
         </el-button>
       </div>
 
-      <!-- AI Summary Panel -->
       <el-alert
         v-if="aiSummary"
-        :title="'AI 日志摘要'"
+        title="AI 日志摘要"
         type="success"
         :closable="true"
         @close="aiSummary = null"
@@ -170,10 +173,9 @@
         <pre class="text-xs whitespace-pre-wrap" style="color: var(--text-main);">{{ aiSummary }}</pre>
       </el-alert>
 
-      <!-- AI Diagnosis Panel -->
       <el-alert
         v-if="aiDiagnosis"
-        :title="'AI 错误诊断'"
+        title="AI 错误诊断"
         type="error"
         :closable="true"
         @close="aiDiagnosis = null"
@@ -182,7 +184,6 @@
         <pre class="text-xs whitespace-pre-wrap" style="color: var(--text-main);">{{ aiDiagnosis }}</pre>
       </el-alert>
 
-      <!-- Log Metadata -->
       <div v-if="currentLog" class="log-metadata">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="状态">
@@ -198,9 +199,8 @@
         </el-descriptions>
       </div>
 
-      <!-- Terminal Output -->
       <div class="terminal-output">
-        <pre class="whitespace-pre-wrap">{{ currentLog?.output || '// 无输出' }}</pre>
+        <pre>{{ currentLog?.output || '// 无输出' }}</pre>
       </div>
     </el-drawer>
   </div>
@@ -214,6 +214,9 @@ import {
 } from '@element-plus/icons-vue'
 import { taskApi, logApi, aiApi } from '../utils/api.js'
 import { formatTimeFull } from '../utils/formatters.js'
+import { useDebounce } from '../composables/useDebounce.js'
+
+const { debounced: debouncedSearch } = useDebounce(() => applyFilters(), 300)
 
 const loading = ref(false)
 const logs = ref([])
@@ -234,10 +237,10 @@ const filters = ref({
 })
 
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = ref(20)
 const totalLogs = ref(0)
 
-const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize))
+const totalPages = computed(() => Math.ceil(totalLogs.value / pageSize.value))
 
 async function fetchTasks() {
   try {
@@ -251,14 +254,14 @@ async function fetchTasks() {
 async function fetchLogs() {
   loading.value = true
   try {
-    const params = {}
+    const params = { page: currentPage.value, size: pageSize.value }
     if (filters.value.taskId) params.task_id = filters.value.taskId
     if (filters.value.exitCode !== null && filters.value.exitCode !== '') params.exit_code = filters.value.exitCode
     if (filters.value.keyword) params.keyword = filters.value.keyword
 
     const res = await logApi.search(params)
-    totalLogs.value = res.data.length
-    logs.value = res.data.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize)
+    totalLogs.value = res.data.total
+    logs.value = res.data.items
     selectedLogs.value = []
   } catch (e) {
     console.error(e)
@@ -269,6 +272,26 @@ async function fetchLogs() {
 
 function refreshLogs() {
   fetchLogs()
+}
+
+function handleFilterChange() {
+  currentPage.value = 1
+  fetchLogs()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  fetchLogs()
+}
+
+function handleSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchLogs()
+}
+
+function handleDebouncedSearch() {
+  debouncedSearch()
 }
 
 function applyFilters() {
@@ -385,32 +408,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.filter-card {
-  border-radius: 12px;
-}
-
+.filter-card,
 .logs-card {
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 
 .log-toolbar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 .log-metadata {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-md);
 }
 
 .terminal-output {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
   max-height: 60vh;
   overflow: auto;
 }

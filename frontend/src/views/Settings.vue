@@ -42,7 +42,7 @@
         <template #header>
           <div class="card-header">
             <div class="flex items-center gap-3">
-              <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-success), var(--color-primary))' }"></div>
+              <div class="header-indicator"></div>
               <span class="font-semibold">环境变量</span>
             </div>
             <el-button type="primary" @click="openEnvModal()">
@@ -52,10 +52,10 @@
           </div>
         </template>
 
-        <el-table :data="envVars" stripe style="width: 100%">
+        <el-table :data="envVars" stripe>
           <el-table-column label="变量名" width="200">
             <template #default="{ row }">
-              <code class="px-2.5 py-1 rounded-lg" :style="{ backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }">{{ row.key }}</code>
+              <code class="px-2 py-1 rounded" style="background-color: var(--color-primary-subtle); color: var(--color-primary);">{{ row.key }}</code>
             </template>
           </el-table-column>
           <el-table-column label="值" min-width="200">
@@ -78,7 +78,7 @@
                 <el-button size="small" @click="openEnvModal(row)">
                   <el-icon><Edit /></el-icon>
                 </el-button>
-                <el-button size="small" type="danger" plain @click="deleteEnv(row)">
+                <el-button size="small" type="danger" plain @click="handleDeleteEnv(row)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </el-button-group>
@@ -96,7 +96,7 @@
         <template #header>
           <div class="card-header">
             <div class="flex items-center gap-3">
-              <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-danger), var(--color-warning))' }"></div>
+              <div class="header-indicator-danger"></div>
               <span class="font-semibold">告警配置</span>
             </div>
             <el-button type="primary" @click="openAlertModal()">
@@ -106,7 +106,7 @@
           </div>
         </template>
 
-        <el-table :data="alerts" stripe style="width: 100%">
+        <el-table :data="alerts" stripe>
           <el-table-column prop="name" label="名称" width="150" />
           <el-table-column label="Webhook URL" min-width="250">
             <template #default="{ row }">
@@ -124,7 +124,7 @@
             <template #default="{ row }">
               <el-switch
                 :model-value="row.is_active"
-                @change="toggleAlert(row)"
+                @change="handleToggleAlert(row)"
                 active-color="var(--color-success)"
                 inactive-color="var(--bg-tertiary)"
               />
@@ -144,7 +144,7 @@
                 <el-button size="small" @click="openAlertModal(row)">
                   <el-icon><Edit /></el-icon>
                 </el-button>
-                <el-button size="small" type="danger" plain @click="deleteAlert(row)">
+                <el-button size="small" type="danger" plain @click="handleDeleteAlert(row)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </el-button-group>
@@ -174,7 +174,7 @@
           </div>
         </template>
 
-        <el-form :model="aiSettings" label-position="top" class="ai-settings-form">
+        <el-form label-position="top" class="ai-settings-form">
           <el-form-item label="API Key">
             <el-input
               v-model="aiSettings.minimax_api_key"
@@ -192,14 +192,13 @@
           <el-form-item>
             <div class="flex gap-3">
               <el-button
-                @click="testAIConnection"
+                @click="handleTestAI"
                 :loading="aiTesting"
                 :disabled="!aiSettings.minimax_api_key || !aiSettings.minimax_group_id"
               >
-                <el-icon v-if="!aiTesting"><Connection /></el-icon>
                 {{ aiTesting ? '测试中...' : '测试连接' }}
               </el-button>
-              <el-button type="primary" @click="saveAISettings">
+              <el-button type="primary" @click="handleSaveAI">
                 {{ aiSettingsSaved ? '已保存' : '保存配置' }}
               </el-button>
             </div>
@@ -220,13 +219,13 @@
         </template>
         <el-row :gutter="16">
           <el-col :xs="24" :sm="12" :md="8" v-for="feature in aiFeatures" :key="feature.name">
-            <el-card shadow="hover" class="feature-card">
+            <div class="feature-card">
               <div class="flex items-center gap-2 mb-1">
                 <el-icon :style="{ color: feature.color }"><MagicStick /></el-icon>
                 <span class="font-medium">{{ feature.name }}</span>
               </div>
               <p class="text-xs" style="color: var(--text-muted);">{{ feature.desc }}</p>
-            </el-card>
+            </div>
           </el-col>
         </el-row>
       </el-card>
@@ -246,14 +245,14 @@
                 <p class="text-sm" style="color: var(--text-muted);">下载所有任务、环境变量和告警配置</p>
               </div>
             </div>
-            <el-button type="primary" @click="exportConfig" class="w-full mt-4">
+            <el-button type="primary" @click="handleExport" class="w-full mt-4">
               <el-icon><Download /></el-icon>
               导出 JSON 文件
             </el-button>
           </el-card>
         </el-col>
         <el-col :xs="24" :md="12">
-          <el-card shadow="never" class="import-card">
+          <el-card shadow="never" class="export-card">
             <div class="export-header">
               <el-avatar :style="{ backgroundColor: 'var(--color-success-subtle)' }">
                 <el-icon><Upload /></el-icon>
@@ -263,8 +262,8 @@
                 <p class="text-sm" style="color: var(--text-muted);">从 JSON 文件恢复所有配置</p>
               </div>
             </div>
-            <input type="file" accept=".json" @change="importConfig" ref="importFile" class="hidden" />
-            <el-button type="success" @click="$refs.importFile.click()" class="w-full mt-4">
+            <input type="file" accept=".json" @change="handleImport" ref="importFileRef" class="hidden" />
+            <el-button type="success" @click="$refs.importFileRef.click()" class="w-full mt-4">
               <el-icon><Upload /></el-icon>
               选择 JSON 文件导入
             </el-button>
@@ -275,7 +274,7 @@
 
     <!-- Env Var Dialog -->
     <el-dialog v-model="showEnvModal" :title="editingEnv ? '编辑变量' : '新增变量'" width="500px">
-      <el-form :model="envForm" label-position="top">
+      <el-form label-position="top">
         <el-form-item label="变量名" required>
           <el-input v-model="envForm.key" placeholder="API_KEY" />
         </el-form-item>
@@ -291,13 +290,13 @@
       </el-form>
       <template #footer>
         <el-button @click="closeEnvModal">取消</el-button>
-        <el-button type="primary" @click="saveEnv">保存</el-button>
+        <el-button type="primary" @click="handleSaveEnv">保存</el-button>
       </template>
     </el-dialog>
 
     <!-- Alert Dialog -->
     <el-dialog v-model="showAlertModal" :title="editingAlert ? '编辑告警' : '新增告警'" width="500px">
-      <el-form :model="alertForm" label-position="top">
+      <el-form label-position="top">
         <el-form-item label="告警名称" required>
           <el-input v-model="alertForm.name" placeholder="钉钉机器人" />
         </el-form-item>
@@ -329,7 +328,7 @@
       </el-form>
       <template #footer>
         <el-button @click="closeAlertModal">取消</el-button>
-        <el-button type="primary" @click="saveAlert">保存</el-button>
+        <el-button type="primary" @click="handleSaveAlert">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -340,13 +339,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import {
-  Key, Bell, MagicStick, Upload, Plus, Edit, Delete, Download, Connection
+  Key, Bell, MagicStick, Upload, Plus, Edit, Delete, Download
 } from '@element-plus/icons-vue'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
 
 const activeTab = ref('env')
-const importFile = ref(null)
+const importFileRef = ref(null)
 
 const envVars = ref([])
 const alerts = ref([])
@@ -360,7 +359,6 @@ const alertEvents = ref(['failed', 'timeout'])
 const envForm = reactive({ key: '', value: '', description: '', is_secret: false })
 const alertForm = reactive({ name: '', webhook_url: '', events: 'failed,timeout', is_active: true, ai_humanize: false })
 
-// AI Settings
 const aiSettings = reactive({
   minimax_api_key: '',
   minimax_group_id: '',
@@ -418,7 +416,7 @@ function closeEnvModal() {
   editingEnv.value = null
 }
 
-async function saveEnv() {
+async function handleSaveEnv() {
   try {
     if (editingEnv.value) {
       await api.put(`/env-vars/${editingEnv.value.id}`, envForm)
@@ -433,7 +431,7 @@ async function saveEnv() {
   }
 }
 
-async function deleteEnv(env) {
+async function handleDeleteEnv(env) {
   try {
     await ElMessageBox.confirm(`确定删除变量 "${env.key}" 吗？`, '提示', {
       confirmButtonText: '确定',
@@ -473,7 +471,7 @@ function closeAlertModal() {
   editingAlert.value = null
 }
 
-async function saveAlert() {
+async function handleSaveAlert() {
   alertForm.events = alertEvents.value.join(',')
   try {
     if (editingAlert.value) {
@@ -489,7 +487,7 @@ async function saveAlert() {
   }
 }
 
-async function deleteAlert(alert) {
+async function handleDeleteAlert(alert) {
   try {
     await ElMessageBox.confirm(`确定删除告警 "${alert.name}" 吗？`, '提示', {
       confirmButtonText: '确定',
@@ -506,7 +504,7 @@ async function deleteAlert(alert) {
   }
 }
 
-async function toggleAlert(alert) {
+async function handleToggleAlert(alert) {
   try {
     await api.put(`/alerts/${alert.id}`, { is_active: !alert.is_active })
     fetchAlerts()
@@ -516,7 +514,7 @@ async function toggleAlert(alert) {
   }
 }
 
-async function exportConfig() {
+async function handleExport() {
   try {
     const res = await api.get('/export')
     const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
@@ -532,7 +530,7 @@ async function exportConfig() {
   }
 }
 
-async function importConfig(event) {
+async function handleImport(event) {
   const file = event.target.files[0]
   if (!file) return
   try {
@@ -559,7 +557,7 @@ async function fetchAISettings() {
   }
 }
 
-async function saveAISettings() {
+async function handleSaveAI() {
   try {
     await api.put('/system/settings', {
       minimax_api_key: aiSettings.minimax_api_key,
@@ -574,7 +572,7 @@ async function saveAISettings() {
   }
 }
 
-async function testAIConnection() {
+async function handleTestAI() {
   aiTesting.value = true
   aiTestResult.value = null
   try {
@@ -617,6 +615,20 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-indicator {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-success), var(--color-primary));
+}
+
+.header-indicator-danger {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-danger), var(--color-warning));
 }
 
 .ai-settings-form {

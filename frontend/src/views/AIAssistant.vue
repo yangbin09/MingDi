@@ -3,7 +3,7 @@
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold" style="color: var(--text-main);">
+        <h1 class="text-xl font-bold" style="color: var(--text-main);">
           <el-icon class="mr-2"><MagicStick /></el-icon>
           AI 助手
         </h1>
@@ -35,30 +35,27 @@
             v-model="scriptPrompt"
             type="textarea"
             :rows="4"
-            placeholder="用自然语言描述你想要实现的脚本功能...
-例如：创建一个定时任务，每周一把 /data 目录下的日志文件压缩备份到 /backup"
+            placeholder="用自然语言描述你想要实现的脚本功能..."
           />
 
           <el-button
             class="mt-4 w-full"
             type="primary"
-            @click="generateScript"
-            :loading="aiGenerating"
+            @click="handleGenerateScript"
+            :loading="aiLoading"
             :disabled="!scriptPrompt.trim()"
           >
-            <el-icon v-if="!aiGenerating"><MagicStick /></el-icon>
-            {{ aiGenerating ? '生成中...' : '生成代码' }}
+            {{ aiLoading ? '生成中...' : '生成代码' }}
           </el-button>
 
-          <!-- Generated Code Preview -->
           <div v-if="generatedScript" class="mt-4">
             <div class="flex justify-between items-center mb-2">
               <span class="text-sm" style="color: var(--text-muted);">生成的代码</span>
               <div class="flex gap-2">
-                <el-button size="small" @click="copyScript">
+                <el-button size="small" @click="handleCopyScript">
                   <el-icon><DocumentCopy /></el-icon>
                 </el-button>
-                <el-button size="small" type="primary" @click="saveScriptAsTask">
+                <el-button size="small" type="primary" @click="handleSaveAsTask">
                   保存为任务
                 </el-button>
               </div>
@@ -87,23 +84,20 @@
 
           <el-input
             v-model="cronPrompt"
-            placeholder="输入时间描述...
-例如：每个工作日下午5点半"
-            @keyup.enter="convertCron"
+            placeholder="例如：每个工作日下午5点半"
+            @keyup.enter="handleConvertCron"
           />
 
           <el-button
             class="mt-4 w-full"
             type="primary"
-            @click="convertCron"
-            :loading="aiCronConverting"
+            @click="handleConvertCron"
+            :loading="aiLoading"
             :disabled="!cronPrompt.trim()"
           >
-            <el-icon v-if="!aiCronConverting"><MagicStick /></el-icon>
-            {{ aiCronConverting ? '转换中...' : '转换为 Cron' }}
+            {{ aiLoading ? '转换中...' : '转换为 Cron' }}
           </el-button>
 
-          <!-- Cron Result -->
           <div v-if="cronResult" class="mt-4">
             <el-alert :title="cronResult.description" type="success" :closable="false">
               <template #default>
@@ -111,11 +105,11 @@
               </template>
             </el-alert>
             <div class="flex gap-2 mt-3">
-              <el-button class="flex-1" @click="copyCron">
+              <el-button class="flex-1" @click="handleCopyCron">
                 <el-icon><DocumentCopy /></el-icon>
                 复制
               </el-button>
-              <el-button class="flex-1" type="primary" @click="applyCronToTask">
+              <el-button class="flex-1" type="primary" @click="handleApplyCron">
                 应用到任务
               </el-button>
             </div>
@@ -143,33 +137,21 @@
               v-model:value="reviewCode"
               language="python"
               theme="vs-dark"
-              :options="{
-                minimap: { enabled: false },
-                fontSize: 13,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 4,
-                wordWrap: 'on',
-                padding: { top: 8 },
-                height: '200px'
-              }"
+              :options="editorOptions"
             />
           </div>
 
           <el-button
             class="mt-4 w-full"
             type="warning"
-            @click="reviewCodeFn"
-            :loading="aiReviewing"
+            @click="handleCodeReview"
+            :loading="aiLoading"
             :disabled="!reviewCode.trim()"
           >
-            <el-icon v-if="!aiReviewing"><MagicStick /></el-icon>
-            {{ aiReviewing ? '审查中...' : '开始审查' }}
+            {{ aiLoading ? '审查中...' : '开始审查' }}
           </el-button>
 
-          <!-- Review Result -->
-          <el-alert v-if="reviewResult" :title="'审查结果'" type="info" :closable="true" class="mt-4">
+          <el-alert v-if="reviewResult" title="审查结果" type="info" :closable="true" class="mt-4">
             <pre class="text-xs whitespace-pre-wrap">{{ reviewResult }}</pre>
           </el-alert>
         </el-card>
@@ -209,16 +191,14 @@
           <el-button
             class="w-full"
             type="danger"
-            @click="diagnoseError"
-            :loading="aiDiagnosing"
+            @click="handleDiagnoseError"
+            :loading="aiLoading"
             :disabled="!errorInput.trim()"
           >
-            <el-icon v-if="!aiDiagnosing"><MagicStick /></el-icon>
-            {{ aiDiagnosing ? '诊断中...' : '开始诊断' }}
+            {{ aiLoading ? '诊断中...' : '开始诊断' }}
           </el-button>
 
-          <!-- Diagnosis Result -->
-          <el-alert v-if="diagnosisResult" :title="'诊断结果'" type="error" :closable="true" class="mt-4">
+          <el-alert v-if="diagnosisResult" title="诊断结果" type="error" :closable="true" class="mt-4">
             <pre class="text-xs whitespace-pre-wrap">{{ diagnosisResult }}</pre>
           </el-alert>
         </el-card>
@@ -243,23 +223,20 @@
         v-model="logInput"
         type="textarea"
         :rows="5"
-        placeholder="粘贴日志内容...
-支持多行日志、错误堆栈等"
+        placeholder="粘贴日志内容..."
       />
 
       <el-button
         class="mt-4"
         type="success"
-        @click="summarizeLog"
-        :loading="aiSummarizing"
+        @click="handleSummarizeLog"
+        :loading="aiLoading"
         :disabled="!logInput.trim()"
       >
-        <el-icon v-if="!aiSummarizing"><MagicStick /></el-icon>
-        {{ aiSummarizing ? '分析中...' : '生成摘要' }}
+        {{ aiLoading ? '分析中...' : '生成摘要' }}
       </el-button>
 
-      <!-- Summary Result -->
-      <el-alert v-if="logSummary" :title="'日志摘要'" type="success" :closable="true" class="mt-4">
+      <el-alert v-if="logSummary" title="日志摘要" type="success" :closable="true" class="mt-4">
         <pre class="text-sm whitespace-pre-wrap">{{ logSummary }}</pre>
       </el-alert>
     </el-card>
@@ -272,150 +249,113 @@ import { ElMessage } from 'element-plus'
 import {
   MagicStick, Clock, Search, Warning, Document, DocumentCopy
 } from '@element-plus/icons-vue'
-import { aiApi } from '../utils/api.js'
+import { useAI } from '../composables/useAI.js'
 
-const aiEnabled = ref(false)
+const { aiEnabled, checkAIStatus, generateScript, codeReview, nlpToCron, diagnoseError, summarizeLog, aiLoading } = useAI()
 
 // Text to Script
 const scriptPrompt = ref('')
 const generatedScript = ref('')
-const aiGenerating = ref(false)
 
 // NLP to Cron
 const cronPrompt = ref('')
 const cronResult = ref(null)
-const aiCronConverting = ref(false)
 
 // Code Review
 const reviewCode = ref('')
 const reviewResult = ref('')
-const aiReviewing = ref(false)
 
 // Error Diagnosis
 const errorInput = ref('')
 const errorCode = ref('')
 const diagnosisResult = ref('')
-const aiDiagnosing = ref(false)
 
 // Log Summary
 const logInput = ref('')
 const logSummary = ref('')
-const aiSummarizing = ref(false)
 
-async function checkAIStatus() {
-  try {
-    const res = await aiApi.capabilities()
-    aiEnabled.value = res.data.ai_enabled
-  } catch (e) {
-    aiEnabled.value = false
-  }
+const editorOptions = {
+  minimap: { enabled: false },
+  fontSize: 13,
+  lineNumbers: 'on',
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
+  tabSize: 4,
+  wordWrap: 'on',
+  padding: { top: 8 },
+  height: '200px'
 }
 
-async function generateScript() {
-  if (!scriptPrompt.value.trim() || aiGenerating.value) return
-  aiGenerating.value = true
+async function handleGenerateScript() {
   try {
-    const res = await aiApi.generateScript(scriptPrompt.value)
-    if (!res.data.used_ai) {
-      ElMessage.warning('AI服务未配置，请前往「系统设置」→「AI设置」配置')
-    }
-    generatedScript.value = res.data.code
+    const result = await generateScript(scriptPrompt.value)
+    generatedScript.value = result.code
     ElMessage.success('代码生成成功')
   } catch (e) {
-    ElMessage.error('生成失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    aiGenerating.value = false
+    console.error(e)
   }
 }
 
-function copyScript() {
+function handleCopyScript() {
   navigator.clipboard.writeText(generatedScript.value)
   ElMessage.success('已复制到剪贴板')
 }
 
-function saveScriptAsTask() {
+function handleSaveAsTask() {
   window.location.href = '/tasks?script=' + encodeURIComponent(generatedScript.value)
 }
 
-async function convertCron() {
-  if (!cronPrompt.value.trim() || aiCronConverting.value) return
-  aiCronConverting.value = true
+async function handleConvertCron() {
   try {
-    const res = await aiApi.nlpToCron(cronPrompt.value)
-    if (!res.data.used_ai) {
-      ElMessage.warning('AI服务未配置，请前往「系统设置」→「AI设置」配置')
-    }
+    const result = await nlpToCron(cronPrompt.value)
     cronResult.value = {
-      expr: res.data.cron_expr,
-      description: res.data.description
+      expr: result.cron_expr,
+      description: result.description
     }
     ElMessage.success('Cron 表达式转换成功')
   } catch (e) {
-    ElMessage.error('转换失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    aiCronConverting.value = false
+    console.error(e)
   }
 }
 
-function copyCron() {
+function handleCopyCron() {
   if (cronResult.value) {
     navigator.clipboard.writeText(cronResult.value.expr)
     ElMessage.success('已复制到剪贴板')
   }
 }
 
-function applyCronToTask() {
+function handleApplyCron() {
   window.location.href = '/tasks?cron=' + encodeURIComponent(cronResult.value?.expr || '')
 }
 
-async function reviewCodeFn() {
-  if (!reviewCode.value.trim() || aiReviewing.value) return
-  aiReviewing.value = true
+async function handleCodeReview() {
   try {
-    const res = await aiApi.codeReview(reviewCode.value)
-    if (!res.data.used_ai) {
-      ElMessage.warning('AI服务未配置，请前往「系统设置」→「AI设置」配置')
-    }
-    reviewResult.value = res.data.review
+    const result = await codeReview(reviewCode.value)
+    reviewResult.value = result.review
     ElMessage.success('代码审查完成')
   } catch (e) {
-    ElMessage.error('审查失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    aiReviewing.value = false
+    console.error(e)
   }
 }
 
-async function diagnoseError() {
-  if (!errorInput.value.trim() || aiDiagnosing.value) return
-  aiDiagnosing.value = true
+async function handleDiagnoseError() {
   try {
-    const res = await aiApi.diagnoseError(errorInput.value, errorCode.value)
-    if (!res.data.used_ai) {
-      ElMessage.warning('AI服务未配置，请前往「系统设置」→「AI设置」配置')
-    }
-    diagnosisResult.value = res.data.diagnosis
+    const result = await diagnoseError(errorInput.value, errorCode.value)
+    diagnosisResult.value = result.diagnosis
     ElMessage.success('错误诊断完成')
   } catch (e) {
-    ElMessage.error('诊断失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    aiDiagnosing.value = false
+    console.error(e)
   }
 }
 
-async function summarizeLog() {
-  if (!logInput.value.trim() || aiSummarizing.value) return
-  aiSummarizing.value = true
+async function handleSummarizeLog() {
   try {
-    const res = await aiApi.summarizeLog(logInput.value)
-    if (!res.data.used_ai) {
-      ElMessage.warning('AI服务未配置，请前往「系统设置」→「AI设置」配置')
-    }
-    logSummary.value = res.data.summary
+    const result = await summarizeLog(logInput.value)
+    logSummary.value = result.summary
     ElMessage.success('日志摘要生成成功')
   } catch (e) {
-    ElMessage.error('摘要生成失败: ' + (e.response?.data?.detail || e.message))
-  } finally {
-    aiSummarizing.value = false
+    console.error(e)
   }
 }
 
@@ -428,23 +368,23 @@ onMounted(() => {
 .tool-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-md);
 }
 
 .tool-card {
   height: 100%;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-md);
 }
 
 .code-preview {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
   max-height: 300px;
   overflow: auto;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 13px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
 }
 
 .code-preview pre {
@@ -456,7 +396,7 @@ onMounted(() => {
 
 .editor-wrapper {
   border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 </style>

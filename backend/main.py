@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 import os
 import shutil
@@ -488,9 +489,11 @@ def search_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     exit_code: Optional[int] = None,
+    page: int = 1,
+    size: int = 20,
     db: Session = Depends(get_db)
 ):
-    """Search logs with filters"""
+    """Search logs with filters and pagination"""
     query = db.query(Log)
 
     if task_id:
@@ -502,14 +505,18 @@ def search_logs(
     if end_date:
         query = query.filter(Log.start_time <= end_date)
 
-    logs = query.order_by(Log.start_time.desc()).limit(100).all()
+    # Get total count before pagination
+    total = query.count()
 
-    # Filter by keyword in memory (for partial matching)
+    # Apply keyword filter in database (case-insensitive LIKE query)
     if keyword:
-        keyword = keyword.lower()
-        logs = [l for l in logs if keyword in (l.output or "").lower()]
+        keyword_lower = keyword.lower()
+        query = query.filter(func.lower(Log.output).like(f"%{keyword_lower}%"))
 
-    return logs
+    # Order and apply pagination at database level
+    logs = query.order_by(Log.start_time.desc()).offset((page - 1) * size).limit(size).all()
+
+    return {"total": total, "items": logs}
 
 
 @app.get("/logs/{log_id}", response_model=LogResponse)

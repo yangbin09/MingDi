@@ -72,6 +72,61 @@ MINIMAX_GROUP_ID=your_group_id_here
 
 ---
 
+# PyCron-Master Phase 12: Composables Hookify 与组件拆分 (已完成)
+
+## 核心目标
+抽离业务逻辑到 Composables，实现逻辑与视图分离，提升代码可维护性。
+
+### 一、业务逻辑 Composables (已完成)
+- [x] **useTask.js** - 任务 CRUD 操作 (fetchTasks, createTask, updateTask, deleteTask, toggleTask, runTask, fetchTaskLogs, enableWebhook, saveScript)
+- [x] **useAI.js** - AI API 调用 (generateScript, codeReview, generateDoc, nlpToCron, summarizeLog, diagnoseError)
+- [x] **usePolling.js** - 轮询工具 (start, stop, restart)
+- [x] **useDebounce.js** - 防抖实现
+- [x] **useThrottle.js** - 节流实现
+
+### 二、组件拆分 (已完成)
+- [x] **TaskDrawer.vue** - 任务创建/编辑抽屉
+- [x] **LogDrawer.vue** - 日志查看抽屉
+- [x] **StatsCard.vue** - 统计卡片组件
+- [x] **ExecutionTimeline.vue** - 执行时间线组件
+- [x] **QuickActions.vue** - 快捷操作面板
+
+### 三、视图重构 (已完成)
+- [x] **Tasks.vue** - 使用 useTask + TaskDrawer/LogDrawer
+- [x] **Dashboard.vue** - 使用 StatsCard/ExecutionTimeline/QuickActions + usePolling
+- [x] **Logs.vue** - 使用 useDebounce 进行搜索防抖
+- [x] **AIAssistant.vue** - 使用 useAI composable
+- [x] **Settings.vue** - 使用 useAI composable
+
+---
+
+# PyCron-Master Phase 13: UI/UX 深度美化与空间美学重写 (已完成)
+
+## 核心目标
+建立严格的.spacing美学系统，打造IDEA级别的极客风格控制台。
+
+### 一、空间美学系统 (已完成)
+- [x] **1. 间距 Token** - 在 CSS 变量中定义基于 4px 的间距系统 (`--space-xs: 4px`, `--space-sm: 8px`, `--space-md: 16px`, `--space-lg: 24px`, `--space-xl: 32px`)
+- [x] **2. 全局应用间距** - 遍历所有 Vue 文件，强制所有卡片、表格、容器使用 CSS 变量作为 Padding 和 Margin
+- [x] **3. 字体 Token** - 定义 `--font-family-sans`, `--font-family-mono`, `--font-size-*`, `--line-height-*` 等排版变量
+- [x] **4. 圆角 Token** - 定义 `--radius-sm: 4px`, `--radius-md: 6px`, `--radius-lg: 8px` 统一圆角系统
+
+### 二、过渡与微交互 (已完成)
+- [x] **5. 全局过渡** - 定义 `--transition-fast: 150ms`, `--transition-base: 200ms`, `--transition-slow: 300ms` 过渡变量
+- [x] **6. 组件过渡** - 为按钮、卡片、菜单添加 `transition: all var(--transition-base)` 效果
+- [x] **7. 主题过渡** - Element Plus 组件支持平滑主题切换
+
+### 三、Darcula 色板增强 (已完成)
+- [x] **8. IDEA 经典配色** - 强化 `--color-primary: #3592C4`, `--color-amber: #FFC66D` 等 IDE 风格配色
+- [x] **9. Element Plus 适配** - 确保所有 Element Plus 组件完美适配 Darcula 暗色主题
+
+### 四、组件统一美化 (已完成)
+- [x] **10. el-card 圆角** - 统一使用 `--radius-lg: 8px` 替代硬编码圆角
+- [x] **11. el-table size** - 设置 `size="small"` 提高数据密度
+- [x] **12. Dashboard 卡片** - 统一使用 CSS 变量间距
+
+---
+
 # PyCron-Master Phase 11: Element Plus 企业级 UI 重构 (已完成)
 
 ## 核心目标

@@ -175,21 +175,21 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-subtle);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color var(--transition-slow), border-color var(--transition-slow);
 }
 
 .sidebar-logo {
-  padding: 1.5rem;
+  padding: var(--space-lg);
 }
 
 .sidebar-menu {
   flex: 1;
   border-right: none !important;
-  padding: 0.5rem;
+  padding: var(--space-sm);
 }
 
 .sidebar-menu .el-menu-item {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin: 2px 0;
   height: 44px;
 }
@@ -203,13 +203,13 @@ onUnmounted(() => {
 }
 
 .sidebar-footer {
-  padding: 1rem;
+  padding: var(--space-md);
 }
 
 .scratchpad-btn {
   width: 100%;
   justify-content: flex-start;
-  padding-left: 1rem;
+  padding-left: var(--space-md);
   background-color: transparent !important;
   border: none !important;
   color: var(--text-muted) !important;
@@ -231,37 +231,37 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.5rem;
+  padding: 0 var(--space-lg);
   backdrop-filter: blur(8px);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color var(--transition-slow), border-color var(--transition-slow);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-sm);
 }
 
 .header-indicator {
   width: 2rem;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--color-primary), var(--color-success));
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-sm);
 }
 
 .app-main {
-  padding: 1.5rem;
+  padding: var(--space-lg);
   overflow-y: auto;
-  transition: background-color 0.3s ease;
+  transition: background-color var(--transition-slow);
 }
 
 .theme-transition {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  transition: background-color var(--transition-slow), color var(--transition-slow), border-color var(--transition-slow);
 }
 </style>
