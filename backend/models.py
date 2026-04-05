@@ -22,12 +22,32 @@ class Task(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    # New fields for Phase 3
-    interpreter_path = Column(String(512), nullable=True)  # Python interpreter/venv path
-    depends_on = Column(Integer, nullable=True)  # Task ID this task depends on (DAG)
-    timeout = Column(Integer, default=300)  # Timeout in seconds
+    # Phase 3 fields
+    interpreter_path = Column(String(512), nullable=True)
+    depends_on = Column(Integer, nullable=True)
+    timeout = Column(Integer, default=300)
+    # Phase 8 AI & Webhook fields
+    webhook_enabled = Column(Boolean, default=False)
+    webhook_token = Column(String(64), nullable=True)
+    description = Column(Text, nullable=True)  # AI-generated doc
+    use_docker = Column(Boolean, default=False)  # Run in Docker sandbox
+    docker_image = Column(String(255), nullable=True)  # Custom Docker image
 
     logs = relationship("Log", back_populates="task", cascade="all, delete-orphan")
+
+
+class NodeFlow(Base):
+    """Visual DAG flow for node-based task orchestration"""
+    __tablename__ = "node_flows"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    nodes = Column(Text, default="[]")  # JSON: list of {id, task_id, x, y, type}
+    edges = Column(Text, default="[]")  # JSON: list of {id, source, target}
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 class EnvVar(Base):
@@ -50,6 +70,7 @@ class AlertConfig(Base):
     webhook_url = Column(String(1024), nullable=False)
     events = Column(String(255), default="failed,timeout")  # Comma-separated events
     is_active = Column(Boolean, default=True)
+    ai_humanize = Column(Boolean, default=False)  # Phase 8: AI humanized alerts
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

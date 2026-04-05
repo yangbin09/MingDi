@@ -28,14 +28,23 @@ def send_webhook_alert(task_name: str, event: str, message: str):
             if event in events:
                 try:
                     import requests
+                    from ai_service import ai_service
+
+                    # Use AI humanized message if enabled
+                    if alert.ai_humanize:
+                        humanized = ai_service.humanize_alert(event, task_name, message)
+                        content = humanized
+                    else:
+                        content = f"[PyCron-Master] {event.upper()}: {task_name}\n{message}"
+
                     payload = {
                         "msgtype": "text",
                         "text": {
-                            "content": f"[PyCron-Master] {event.upper()}: {task_name}\n{message}"
+                            "content": content
                         }
                     }
                     requests.post(alert.webhook_url, json=payload, timeout=10)
-                    logger.info(f"Webhook alert sent for {task_name}: {event}")
+                    logger.info(f"Webhook alert sent for {task_name}: {event} (AI: {alert.ai_humanize})")
                 except Exception as e:
                     logger.error(f"Failed to send webhook alert: {e}")
     finally:

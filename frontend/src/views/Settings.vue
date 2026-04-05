@@ -140,6 +140,7 @@
               <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Webhook URL</th>
               <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">触发事件</th>
               <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-24" style="color: var(--text-muted);">状态</th>
+              <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-20" style="color: var(--text-muted);">AI</th>
               <th class="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider w-32" style="color: var(--text-muted);">操作</th>
             </tr>
           </thead>
@@ -186,6 +187,19 @@
                     }"
                   />
                 </button>
+              </td>
+              <td class="px-4 py-4">
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="alert.ai_humanize"
+                    class="flex items-center gap-1 text-xs px-2 py-1 rounded"
+                    :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--color-purple)' }"
+                    title="AI拟人化告警"
+                  >
+                    <SparklesIcon class="w-3 h-3" />
+                    AI
+                  </span>
+                </div>
               </td>
               <td class="px-4 py-4">
                 <div class="flex items-center justify-end gap-1">
@@ -350,6 +364,35 @@
                 </label>
               </div>
             </div>
+
+            <!-- AI Humanized Alert -->
+            <div class="rounded-lg p-3" :style="{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <SparklesIcon class="w-4 h-4" :style="{ color: 'var(--color-purple)' }" />
+                  <div>
+                    <span class="text-sm font-medium" style="color: var(--text-main);">AI 拟人化告警</span>
+                    <p class="text-xs" style="color: var(--text-disabled);">将冷冰冰的错误信息转化为友好的提示</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  @click="alertForm.ai_humanize = !alertForm.ai_humanize"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300"
+                  :style="alertForm.ai_humanize
+                    ? { backgroundColor: 'rgba(168, 85, 247, 0.2)', border: '1px solid var(--color-purple)' }
+                    : { backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }"
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full transition-all duration-300"
+                    :style="{
+                      backgroundColor: alertForm.ai_humanize ? 'var(--color-purple)' : 'var(--text-muted)',
+                      transform: alertForm.ai_humanize ? 'translateX(22px)' : 'translateX(2px)'
+                    }"
+                  />
+                </button>
+              </div>
+            </div>
             <div class="flex gap-3 pt-4" :style="{ borderTop: '1px solid var(--border-subtle)' }">
               <button type="button" @click="closeAlertModal" class="flex-1 px-4 py-2.5 rounded-lg transition-all" :style="{ border: '1px solid var(--border-subtle)', color: 'var(--text-main)' }">取消</button>
               <button type="submit" class="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all" :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }">保存</button>
@@ -366,7 +409,8 @@ import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
 import {
   PlusIcon, PencilIcon, TrashIcon, XMarkIcon,
-  ShieldCheckIcon, BellIcon, ArrowDownTrayIcon, ArrowUpTrayIcon
+  ShieldCheckIcon, BellIcon, ArrowDownTrayIcon, ArrowUpTrayIcon,
+  SparklesIcon
 } from '@heroicons/vue/24/outline'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
@@ -388,7 +432,7 @@ const editingAlert = ref(null)
 const alertEvents = ref(['failed', 'timeout'])
 
 const envForm = reactive({ key: '', value: '', description: '', is_secret: false })
-const alertForm = reactive({ name: '', webhook_url: '', events: 'failed,timeout', is_active: true })
+const alertForm = reactive({ name: '', webhook_url: '', events: 'failed,timeout', is_active: true, ai_humanize: false })
 
 const importFile = ref(null)
 
@@ -434,9 +478,11 @@ function openAlertModal(alert = null) {
   if (alert) {
     alertForm.name = alert.name; alertForm.webhook_url = alert.webhook_url
     alertForm.is_active = alert.is_active
+    alertForm.ai_humanize = alert.ai_humanize || false
     alertEvents.value = alert.events.split(',').map(e => e.trim())
   } else {
     alertForm.name = ''; alertForm.webhook_url = ''; alertForm.is_active = true
+    alertForm.ai_humanize = false
     alertEvents.value = ['failed', 'timeout']
   }
   showAlertModal.value = true
