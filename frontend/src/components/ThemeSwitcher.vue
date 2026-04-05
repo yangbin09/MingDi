@@ -139,6 +139,7 @@ const themes = [
     description: 'IDEA 经典暗色，长时间编码最护眼',
     badge: '推荐',
     icon: markRaw(MoonIcon),
+    isDark: true,
     colors: {
       bg: ['#2B2B2B', '#3C3F41', '#4C5052'],
       accent: ['#3592C4', '#67965A', '#E43F3F']
@@ -150,6 +151,7 @@ const themes = [
     description: 'VS Code 最受欢迎，深邃蓝黑',
     badge: null,
     icon: markRaw(SparklesIcon),
+    isDark: true,
     colors: {
       bg: ['#282C34', '#21252B', '#2C313A'],
       accent: ['#61AFEF', '#98C379', '#E06C75']
@@ -161,6 +163,7 @@ const themes = [
     description: '复古琥珀暖色调，极致护眼',
     badge: null,
     icon: markRaw(SunIcon),
+    isDark: true,
     colors: {
       bg: ['#282828', '#32302F', '#3C3836'],
       accent: ['#D65D0E', '#98971A', '#CC241D']
@@ -172,6 +175,7 @@ const themes = [
     description: 'IDEA 经典亮色，干净高对比',
     badge: null,
     icon: markRaw(CodeBracketIcon),
+    isDark: false,
     colors: {
       bg: ['#F2F2F2', '#FFFFFF', '#E6E6E6'],
       accent: ['#3592C4', '#488B49', '#D04438']
@@ -191,6 +195,13 @@ function selectTheme(themeId) {
 
 function applyTheme(themeId) {
   document.documentElement.setAttribute('data-theme', themeId)
+  // Element Plus dark mode - add/remove 'dark' class based on theme
+  const theme = themes.find(t => t.id === themeId)
+  if (theme && theme.isDark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
 }
 
 // Close dropdown when clicking outside

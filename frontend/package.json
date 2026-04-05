@@ -9,11 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "@guolao/vue-monaco-editor": "^1.6.0",
     "@heroicons/vue": "^2.2.0",
     "axios": "^1.6.5",
     "cron-parser": "^4.9.0",
     "echarts": "^5.5.0",
+    "element-plus": "^2.13.6",
     "vue": "^3.4.15",
     "vue-router": "^4.6.4"
   },
