@@ -25,9 +25,13 @@
       <table v-else class="w-full">
         <thead class="bg-gray-800/50">
           <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-10">状态</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-10">
+              <span class="relative flex h-3 w-3 justify-center">
+                <span v-if="runningCount > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              </span>
+            </th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">任务</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">下次执行</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">依赖</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-32">定时</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-24">启用</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider w-48">操作</th>
@@ -38,8 +42,9 @@
             v-for="task in tasks"
             :key="task.id"
             class="hover:bg-gray-800/30 transition"
+            :class="{ 'bg-emerald-500/5': task.status === 'running' }"
           >
-            <!-- Status -->
+            <!-- Status with breathing effect -->
             <td class="px-4 py-4">
               <span class="relative flex h-3 w-3">
                 <span
@@ -56,12 +61,19 @@
             <!-- Task Info -->
             <td class="px-4 py-4">
               <div class="font-medium">{{ task.name }}</div>
-              <div class="text-xs text-gray-500 mt-0.5">{{ task.script_path }}</div>
+              <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                <span>{{ task.script_path }}</span>
+                <span v-if="task.interpreter_path" class="text-purple-400" title="自定义Python环境">
+                  [{{ task.interpreter_path.split('/').pop().split('\\').pop() }}]
+                </span>
+              </div>
             </td>
 
-            <!-- Next Run -->
-            <td class="px-4 py-4 text-sm text-gray-400">
-              <span v-if="task.cron_expr && task.is_active">{{ getNextRun(task.cron_expr) }}</span>
+            <!-- Dependency -->
+            <td class="px-4 py-4 text-sm">
+              <span v-if="task.depends_on" class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">
+                → {{ getTaskName(task.depends_on) }}
+              </span>
               <span v-else class="text-gray-600">-</span>
             </td>
 
@@ -125,15 +137,9 @@
   </div>
 
   <!-- Task Drawer -->
-  <div
-    v-if="showDrawer"
-    class="fixed inset-0 z-50 overflow-hidden"
-  >
+  <div v-if="showDrawer" class="fixed inset-0 z-50 overflow-hidden">
     <div class="absolute inset-0 bg-black/60" @click="closeDrawer"></div>
-    <div
-      class="absolute right-0 top-0 h-full w-full max-w-xl bg-gray-900 border-l border-gray-800 transform transition-transform"
-      :class="showDrawer ? 'translate-x-0' : 'translate-x-full'"
-    >
+    <div class="absolute right-0 top-0 h-full w-full max-w-xl bg-gray-900 border-l border-gray-800 transform transition-transform" :class="showDrawer ? 'translate-x-0' : 'translate-x-full'">
       <div class="flex items-center justify-between p-4 border-b border-gray-800">
         <h2 class="text-lg font-semibold">{{ isEditing ? '编辑任务' : '新建任务' }}</h2>
         <button @click="closeDrawer" class="p-2 hover:bg-gray-800 rounded-lg">
@@ -146,13 +152,7 @@
           <!-- Task Name -->
           <div>
             <label class="block text-sm font-medium text-gray-400 mb-2">任务名称</label>
-            <input
-              v-model="form.name"
-              type="text"
-              required
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500"
-              placeholder="输入任务名称"
-            />
+            <input v-model="form.name" type="text" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500" placeholder="输入任务名称" />
           </div>
 
           <!-- Script Mode -->
@@ -160,114 +160,77 @@
             <label class="block text-sm font-medium text-gray-400 mb-2">脚本来源</label>
             <div class="flex gap-4 mb-3">
               <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  v-model="scriptMode"
-                  value="path"
-                  class="accent-emerald-500"
-                />
+                <input type="radio" v-model="scriptMode" value="path" class="accent-emerald-500" />
                 <span class="text-sm">服务器路径</span>
               </label>
               <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  v-model="scriptMode"
-                  value="editor"
-                  class="accent-emerald-500"
-                />
+                <input type="radio" v-model="scriptMode" value="editor" class="accent-emerald-500" />
                 <span class="text-sm">在线编辑</span>
               </label>
             </div>
 
-            <!-- Path Mode -->
             <div v-if="scriptMode === 'path'">
-              <input
-                v-model="form.script_path"
-                type="text"
-                required
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm"
-                placeholder="./scripts/my_script.py"
-              />
+              <input v-model="form.script_path" type="text" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" placeholder="./scripts/my_script.py" />
             </div>
-
-            <!-- Editor Mode -->
             <div v-else class="border border-gray-700 rounded-lg overflow-hidden">
               <div class="bg-gray-800 px-3 py-2 text-xs text-gray-400 border-b border-gray-700 flex items-center justify-between">
                 <span>Python Editor</span>
                 <span class="text-emerald-500">Python 3</span>
               </div>
-              <vue-monaco-editor
-                v-model:value="form.script_content"
-                language="python"
-                theme="vs-dark"
-                :options="{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 4,
-                  wordWrap: 'on',
-                  padding: { top: 8 }
-                }"
-                height="250px"
-              />
+              <vue-monaco-editor v-model:value="form.script_content" language="python" theme="vs-dark" :options="{ minimap: { enabled: false }, fontSize: 14, lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, tabSize: 4, wordWrap: 'on', padding: { top: 8 } }" height="200px" />
             </div>
+          </div>
+
+          <!-- Interpreter Path (venv) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">
+              Python 解释器
+              <span class="text-xs text-gray-500">(可选)</span>
+            </label>
+            <div class="relative">
+              <input v-model="form.interpreter_path" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" placeholder="/usr/bin/python3 或 C:\venv\scripts\python.exe" />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-purple-400" v-if="form.interpreter_path">venv</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">指定任务执行的 Python 解释器路径，留空则使用系统默认</p>
           </div>
 
           <!-- Cron Expression -->
           <div>
             <label class="block text-sm font-medium text-gray-400 mb-2">定时执行</label>
             <div class="grid grid-cols-4 gap-2 mb-3">
-              <button
-                type="button"
-                v-for="preset in cronPresets"
-                :key="preset.value"
-                @click="form.cron_expr = preset.value"
+              <button type="button" v-for="preset in cronPresets" :key="preset.value" @click="form.cron_expr = preset.value"
                 class="px-3 py-2 text-xs rounded-lg border transition"
-                :class="form.cron_expr === preset.value ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-gray-700 text-gray-400 hover:border-gray-600'"
-              >
+                :class="form.cron_expr === preset.value ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-gray-700 text-gray-400 hover:border-gray-600'">
                 {{ preset.label }}
               </button>
             </div>
-            <input
-              v-model="form.cron_expr"
-              type="text"
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono"
-              placeholder="* * * * *"
-            />
-            <p class="text-xs text-gray-500 mt-2" v-if="form.cron_expr">
-              {{ cronHumanText(form.cron_expr) }}
-            </p>
+            <input v-model="form.cron_expr" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 font-mono" placeholder="* * * * *" />
+            <p class="text-xs text-gray-500 mt-2" v-if="form.cron_expr">{{ cronHumanText(form.cron_expr) }}</p>
+          </div>
+
+          <!-- Task Dependency -->
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">
+              前置任务依赖
+              <span class="text-xs text-gray-500">(可选)</span>
+            </label>
+            <select v-model="form.depends_on" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500">
+              <option :value="null">无依赖</option>
+              <option v-for="t in availableDependencies" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">当前置任务成功执行后，自动触发此任务</p>
           </div>
 
           <!-- Timeout -->
           <div>
             <label class="block text-sm font-medium text-gray-400 mb-2">超时时间 (秒)</label>
-            <input
-              v-model.number="form.timeout"
-              type="number"
-              min="0"
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500"
-              placeholder="300"
-            />
+            <input v-model.number="form.timeout" type="number" min="0" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500" placeholder="300" />
           </div>
 
           <!-- Submit -->
           <div class="flex gap-3 pt-4 border-t border-gray-800">
-            <button
-              type="button"
-              @click="closeDrawer"
-              class="flex-1 px-4 py-2.5 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              class="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition"
-            >
-              {{ isEditing ? '保存' : '创建' }}
-            </button>
+            <button type="button" @click="closeDrawer" class="flex-1 px-4 py-2.5 border border-gray-700 rounded-lg hover:bg-gray-800 transition">取消</button>
+            <button type="submit" class="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition">{{ isEditing ? '保存' : '创建' }}</button>
           </div>
         </form>
       </div>
@@ -275,15 +238,9 @@
   </div>
 
   <!-- Log Drawer -->
-  <div
-    v-if="showLogDrawer"
-    class="fixed inset-0 z-50 overflow-hidden"
-  >
+  <div v-if="showLogDrawer" class="fixed inset-0 z-50 overflow-hidden">
     <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeLogDrawer"></div>
-    <div
-      class="absolute right-0 top-0 h-full w-full max-w-3xl bg-black border-l border-gray-800 transform transition-transform duration-300"
-      :class="showLogDrawer ? 'translate-x-0' : 'translate-x-full'"
-    >
+    <div class="absolute right-0 top-0 h-full w-full max-w-3xl bg-black border-l border-gray-800 transform transition-transform duration-300" :class="showLogDrawer ? 'translate-x-0' : 'translate-x-full'">
       <!-- Terminal Header -->
       <div class="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800">
         <div class="flex items-center gap-3">
@@ -298,17 +255,16 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button
-            @click="runTask(currentTask)"
-            class="px-3 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30 transition"
-          >
-            ▶ 运行
+          <!-- Search Filter -->
+          <div class="flex items-center gap-1 mr-2">
+            <input v-model="logSearch" type="text" placeholder="搜索关键字..." class="bg-gray-800 text-xs px-2 py-1 rounded border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-32" />
+            <input v-model="logDateFilter" type="date" class="bg-gray-800 text-xs px-2 py-1 rounded border border-gray-700 text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <button @click="downloadLog" class="p-1.5 hover:bg-gray-800 rounded transition" title="下载日志">
+            <ArrowDownTrayIcon class="w-4 h-4" />
           </button>
-          <button
-            @click="refreshLogs"
-            class="p-1.5 hover:bg-gray-800 rounded transition"
-            title="刷新"
-          >
+          <button @click="runTask(currentTask)" class="px-3 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30 transition">▶ 运行</button>
+          <button @click="refreshLogs" class="p-1.5 hover:bg-gray-800 rounded transition" title="刷新">
             <ArrowPathIcon class="w-4 h-4" />
           </button>
           <button @click="closeLogDrawer" class="p-1.5 hover:bg-gray-800 rounded transition">
@@ -318,48 +274,31 @@
       </div>
 
       <!-- Terminal Content -->
-      <div
-        ref="terminalContent"
-        class="h-[calc(100%-48px)] overflow-auto p-4 bg-black"
-      >
-        <!-- Terminal Prompt -->
+      <div ref="terminalContent" class="h-[calc(100%-48px)] overflow-auto p-4 bg-black">
         <div class="space-y-1 font-mono text-sm">
           <div class="text-gray-500">
             <span class="text-emerald-400">pycron</span>:<span class="text-blue-400">~</span>$ python {{ currentTask?.script_path }}
           </div>
 
-          <div v-if="logs.length === 0" class="text-gray-500 py-4">
+          <div v-if="filteredLogs.length === 0" class="text-gray-500 py-4">
             <p>// 暂无执行记录</p>
             <p class="text-emerald-500 mt-2">// 点击上方 "运行" 按钮执行任务</p>
           </div>
 
           <div v-else>
-            <div
-              v-for="(log, idx) in logs"
-              :key="log.id"
-              class="border-b border-gray-900 pb-4 mb-4 last:border-0"
-            >
-              <!-- Session Header -->
+            <div v-for="(log, idx) in filteredLogs" :key="log.id" class="border-b border-gray-900 pb-4 mb-4 last:border-0">
               <div class="flex items-center gap-3 text-xs text-gray-600 mb-2">
                 <span class="text-emerald-500">[{{ idx + 1 }}]</span>
                 <span>{{ formatTime(log.start_time) }}</span>
-                <span v-if="log.end_time" class="text-gray-500">
-                  → {{ formatTime(log.end_time) }}
-                </span>
-                <span
-                  class="px-1.5 py-0.5 rounded text-xs"
-                  :class="log.exit_code === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'"
-                >
+                <span v-if="log.end_time" class="text-gray-500">→ {{ formatTime(log.end_time) }}</span>
+                <span class="px-1.5 py-0.5 rounded text-xs" :class="log.exit_code === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'">
                   exit {{ log.exit_code }}
                 </span>
               </div>
-
-              <!-- Output -->
-              <pre class="whitespace-pre-wrap text-gray-300 leading-relaxed">{{ log.output || '// 无输出' }}</pre>
+              <pre class="whitespace-pre-wrap text-gray-300 leading-relaxed" v-html="highlightKeyword(log.output || '// 无输出')"></pre>
             </div>
           </div>
 
-          <!-- Blinking Cursor -->
           <div class="mt-4 text-emerald-400">
             <span class="inline-block w-2 h-4 bg-emerald-400 animate-pulse"></span>
           </div>
@@ -370,23 +309,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
 import cronParser from 'cron-parser'
 import {
-  PlusIcon,
-  PlayIcon,
-  PencilIcon,
-  TrashIcon,
-  CommandLineIcon,
-  XMarkIcon,
-  ArrowPathIcon,
-  InboxIcon
+  PlusIcon, PlayIcon, PencilIcon, TrashIcon, CommandLineIcon,
+  XMarkIcon, ArrowPathIcon, InboxIcon, ArrowDownTrayIcon
 } from '@heroicons/vue/24/outline'
 
-const api = axios.create({
-  baseURL: 'http://localhost:8000'
-})
+const api = axios.create({ baseURL: 'http://localhost:8000' })
 
 const tasks = ref([])
 const showDrawer = ref(false)
@@ -395,15 +326,30 @@ const isEditing = ref(false)
 const scriptMode = ref('path')
 const currentTask = ref(null)
 const logs = ref([])
+const logSearch = ref('')
+const logDateFilter = ref('')
 
 const form = reactive({
-  id: null,
-  name: '',
-  script_path: './scripts/',
-  script_content: '',
-  cron_expr: '* * * * *',
-  timeout: 300,
-  is_active: true
+  id: null, name: '', script_path: './scripts/', script_content: '',
+  cron_expr: '* * * * *', timeout: 300, is_active: true,
+  interpreter_path: null, depends_on: null
+})
+
+const runningCount = computed(() => tasks.value.filter(t => t.status === 'running').length)
+
+const availableDependencies = computed(() => tasks.value.filter(t => t.id !== form.id))
+
+const filteredLogs = computed(() => {
+  let result = logs.value
+  if (logSearch.value) {
+    const kw = logSearch.value.toLowerCase()
+    result = result.filter(l => (l.output || '').toLowerCase().includes(kw))
+  }
+  if (logDateFilter.value) {
+    const date = new Date(logDateFilter.value).toDateString()
+    result = result.filter(l => new Date(l.start_time).toDateString() === date)
+  }
+  return result
 })
 
 const cronPresets = [
@@ -417,36 +363,24 @@ async function fetchTasks() {
   try {
     const res = await api.get('/tasks')
     tasks.value = res.data
-  } catch (e) {
-    console.error('Failed to fetch tasks:', e)
-  }
+  } catch (e) { console.error(e) }
+}
+
+function getTaskName(taskId) {
+  const t = tasks.value.find(t => t.id === taskId)
+  return t ? t.name : 'Unknown'
 }
 
 function statusDotClass(status) {
-  const classes = {
-    idle: 'bg-gray-500',
-    running: 'bg-emerald-500',
-    success: 'bg-emerald-400',
-    failed: 'bg-red-500',
-    timeout: 'bg-yellow-500'
-  }
-  return classes[status] || classes.idle
-}
-
-function statusText(status) {
-  const texts = { idle: '闲置', running: '运行中', success: '成功', failed: '失败', timeout: '超时' }
-  return texts[status] || status
+  return { idle: 'bg-gray-500', running: 'bg-emerald-500', success: 'bg-emerald-400', failed: 'bg-red-500', timeout: 'bg-yellow-500' }[status] || 'bg-gray-500'
 }
 
 function getNextRun(cronExpr) {
   try {
     const interval = cronParser.parseExpression(cronExpr)
     const next = interval.next().toDate()
-    const d = new Date(next)
-    return d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return '-'
-  }
+    return new Date(next).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return '-' }
 }
 
 function cronHumanText(expr) {
@@ -454,7 +388,6 @@ function cronHumanText(expr) {
     const parts = expr.split(' ')
     if (parts.length !== 5) return ''
     const [min, hour, day, month, week] = parts
-
     if (expr === '* * * * *') return '每分钟执行一次'
     if (expr === '0 * * * *') return '每小时整点执行'
     if (day === '*' && month === '*' && week === '*') return `每天 ${hour}:${min.padStart(2, '0')} 执行`
@@ -463,9 +396,7 @@ function cronHumanText(expr) {
       return `每周${weekDays[parseInt(week)]} ${hour}:${min.padStart(2, '0')} 执行`
     }
     return `将在 ${expr} 执行`
-  } catch {
-    return ''
-  }
+  } catch { return '' }
 }
 
 function formatTime(timeStr) {
@@ -473,118 +404,92 @@ function formatTime(timeStr) {
   return new Date(timeStr).toLocaleString('zh-CN')
 }
 
+function highlightKeyword(text) {
+  if (!logSearch.value) return text
+  const kw = logSearch.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return text.replace(new RegExp(`(${kw})`, 'gi'), '<mark class="bg-yellow-500/50 text-yellow-200">$1</mark>')
+}
+
 function openCreateDrawer() {
-  isEditing.value = false
-  resetForm()
-  showDrawer.value = true
+  isEditing.value = false; resetForm(); showDrawer.value = true
 }
 
 function openEditDrawer(task) {
-  isEditing.value = true
-  currentTask.value = task
-  form.id = task.id
-  form.name = task.name
-  form.script_path = task.script_path
-  form.cron_expr = task.cron_expr || '* * * * *'
-  form.timeout = task.timeout || 300
-  form.is_active = task.is_active
-  scriptMode.value = 'path'
+  isEditing.value = true; currentTask.value = task
+  form.id = task.id; form.name = task.name; form.script_path = task.script_path
+  form.cron_expr = task.cron_expr || '* * * * *'; form.timeout = task.timeout || 300
+  form.is_active = task.is_active; form.interpreter_path = task.interpreter_path
+  form.depends_on = task.depends_on; scriptMode.value = 'path'
   showDrawer.value = true
 }
 
-function closeDrawer() {
-  showDrawer.value = false
-}
+function closeDrawer() { showDrawer.value = false }
 
 function resetForm() {
-  form.id = null
-  form.name = ''
-  form.script_path = './scripts/'
-  form.script_content = ''
-  form.cron_expr = '* * * * *'
-  form.timeout = 300
-  form.is_active = true
+  form.id = null; form.name = ''; form.script_path = './scripts/'; form.script_content = ''
+  form.cron_expr = '* * * * *'; form.timeout = 300; form.is_active = true
+  form.interpreter_path = null; form.depends_on = null
 }
 
 async function submitForm() {
   try {
     const payload = {
-      name: form.name,
-      script_path: form.script_path,
-      cron_expr: form.cron_expr || null,
-      is_active: form.is_active
+      name: form.name, script_path: form.script_path,
+      cron_expr: form.cron_expr || null, is_active: form.is_active,
+      interpreter_path: form.interpreter_path || null, depends_on: form.depends_on,
+      timeout: form.timeout || 300
     }
-
-    if (isEditing.value) {
-      await api.put(`/tasks/${form.id}`, payload)
-    } else {
-      await api.post('/tasks', payload)
-    }
-
-    closeDrawer()
-    fetchTasks()
-  } catch (e) {
-    console.error('Failed to submit form:', e)
-    alert('操作失败: ' + (e.response?.data?.detail || e.message))
-  }
+    if (isEditing.value) { await api.put(`/tasks/${form.id}`, payload) }
+    else { await api.post('/tasks', payload) }
+    closeDrawer(); fetchTasks()
+  } catch (e) { alert('操作失败: ' + (e.response?.data?.detail || e.message)) }
 }
 
 async function toggleTask(task) {
-  try {
-    await api.put(`/tasks/${task.id}`, { is_active: !task.is_active })
-    fetchTasks()
-  } catch (e) {
-    console.error('Failed to toggle task:', e)
-  }
+  try { await api.put(`/tasks/${task.id}`, { is_active: !task.is_active }); fetchTasks() }
+  catch (e) { console.error(e) }
 }
 
 async function runTask(task) {
   if (!task) task = currentTask.value
   try {
     await api.post(`/tasks/${task.id}/run`)
-    setTimeout(() => {
-      fetchTasks()
-      refreshLogs()
-    }, 1000)
-  } catch (e) {
-    console.error('Failed to run task:', e)
-    alert('启动失败: ' + (e.response?.data?.detail || e.message))
-  }
+    setTimeout(() => { fetchTasks(); refreshLogs() }, 1000)
+  } catch (e) { alert('启动失败: ' + (e.response?.data?.detail || e.message)) }
 }
 
 async function deleteTask(task) {
   if (!confirm(`确定删除任务 "${task.name}" 吗？`)) return
-  try {
-    await api.delete(`/tasks/${task.id}`)
-    fetchTasks()
-  } catch (e) {
-    console.error('Failed to delete task:', e)
-  }
+  try { await api.delete(`/tasks/${task.id}`); fetchTasks() }
+  catch (e) { console.error(e) }
 }
 
 function openLogDrawer(task) {
-  currentTask.value = task
-  logs.value = []
-  showLogDrawer.value = true
-  refreshLogs()
+  currentTask.value = task; logs.value = []; logSearch.value = ''; logDateFilter.value = ''
+  showLogDrawer.value = true; refreshLogs()
 }
 
-function closeLogDrawer() {
-  showLogDrawer.value = false
-}
+function closeLogDrawer() { showLogDrawer.value = false }
 
 async function refreshLogs() {
   if (!currentTask.value) return
   try {
     const res = await api.get(`/tasks/${currentTask.value.id}/logs`)
     logs.value = res.data
-  } catch (e) {
-    console.error('Failed to fetch logs:', e)
-  }
+  } catch (e) { console.error(e) }
 }
 
-onMounted(() => {
-  fetchTasks()
-  setInterval(fetchTasks, 5000)
-})
+async function downloadLog() {
+  if (!logs.value.length) return
+  const content = logs.value.map((l, i) =>
+    `=== Session ${i + 1} ===\nTime: ${formatTime(l.start_time)}\nExit: ${l.exit_code}\n\n${l.output || '// No output'}\n`
+  ).join('\n')
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `task_${currentTask.value.id}_logs_${new Date().toISOString().slice(0,10)}.log`; a.click()
+  URL.revokeObjectURL(url)
+}
+
+onMounted(() => { fetchTasks(); setInterval(fetchTasks, 5000) })
 </script>

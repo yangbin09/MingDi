@@ -22,8 +22,36 @@ class Task(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # New fields for Phase 3
+    interpreter_path = Column(String(512), nullable=True)  # Python interpreter/venv path
+    depends_on = Column(Integer, nullable=True)  # Task ID this task depends on (DAG)
+    timeout = Column(Integer, default=300)  # Timeout in seconds
 
     logs = relationship("Log", back_populates="task", cascade="all, delete-orphan")
+
+
+class EnvVar(Base):
+    __tablename__ = "env_vars"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(255), nullable=False, unique=True)
+    value = Column(Text, nullable=False)
+    description = Column(String(512), nullable=True)
+    is_secret = Column(Boolean, default=False)  # Hide value in UI
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AlertConfig(Base):
+    __tablename__ = "alert_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    webhook_url = Column(String(1024), nullable=False)
+    events = Column(String(255), default="failed,timeout")  # Comma-separated events
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Log(Base):
