@@ -152,7 +152,8 @@ import {
   ListBulletIcon,
   Cog6ToothIcon,
   ArrowPathIcon,
-  CodeBracketIcon
+  CodeBracketIcon,
+  CpuChipIcon
 } from '@heroicons/vue/24/outline'
 import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import Scratchpad from './components/Scratchpad.vue'
@@ -167,11 +168,12 @@ const showScratchpad = ref(false)
 const navItems = [
   { path: '/', name: 'Dashboard', label: '仪表盘', icon: ChartBarIcon },
   { path: '/tasks', name: 'Tasks', label: '任务管理', icon: ListBulletIcon },
+  { path: '/ai-hub', name: 'AIHub', label: '🤖 智能中枢', icon: CpuChipIcon },
   { path: '/settings', name: 'Settings', label: '系统设置', icon: Cog6ToothIcon },
 ]
 
 const pageTitle = computed(() => {
-  const titles = { Dashboard: '仪表盘概览', Tasks: '任务管理', Settings: '系统设置' }
+  const titles = { Dashboard: '仪表盘概览', Tasks: '任务管理', Settings: '系统设置', AIHub: '🤖 智能中枢' }
   return titles[this?.$route?.name] || '仪表盘概览'
 })
 

@@ -8,7 +8,7 @@ import shutil
 import time
 import secrets
 
-from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings
+from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings, AIProvider, AIModel, AIFeatureRouting, AIPromptTemplate, AISemanticCache, AIRAGContext, AIPermissionLevel, AIUsageStats, AIAuditLog
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, LogResponse,
     EnvVarCreate, EnvVarUpdate, EnvVarResponse,
@@ -21,7 +21,14 @@ from schemas import (
     WebhookTriggerRequest, WebhookTriggerResponse,
     NodeFlowCreate, NodeFlowUpdate, NodeFlowResponse,
     DockerRunRequest, DockerRunResponse,
-    SystemSettingsResponse, SystemSettingsUpdate
+    SystemSettingsResponse, SystemSettingsUpdate,
+    AIProviderCreate, AIProviderUpdate, AIProviderResponse,
+    AIModelCreate, AIModelUpdate, AIModelResponse,
+    AIFeatureRoutingCreate, AIFeatureRoutingUpdate, AIFeatureRoutingResponse,
+    AIPromptTemplateCreate, AIPromptTemplateUpdate, AIPromptTemplateResponse,
+    AIRAGContextCreate, AIRAGContextUpdate, AIRAGContextResponse,
+    AIPermissionLevelCreate, AIPermissionLevelUpdate, AIPermissionLevelResponse,
+    AIUsageStatsResponse, AIAuditLogResponse
 )
 from scheduler import add_task_job, remove_task_job, execute_task_now, start_scheduler, stop_scheduler
 from ai_service import ai_service, generate_webhook_token, extract_requirements, parse_cron_human
@@ -49,7 +56,7 @@ def startup_event():
 
 
 def migrate_database():
-    """Auto-migrate database to add new columns"""
+    """Auto-migrate database to add new columns and tables"""
     import sqlite3
     import os
 
@@ -60,12 +67,15 @@ def migrate_database():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Check existing columns in tasks table
-    cursor.execute("PRAGMA table_info(tasks)")
-    columns = [col[1] for col in cursor.fetchall()]
+    # Get all existing tables
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    existing_tables = [row[0] for row in cursor.fetchall()]
 
-    # New columns to add
-    new_columns = {
+    # New columns for tasks table
+    cursor.execute("PRAGMA table_info(tasks)")
+    tasks_cols = [col[1] for col in cursor.fetchall()]
+
+    new_task_columns = {
         'webhook_enabled': 'ALTER TABLE tasks ADD COLUMN webhook_enabled BOOLEAN DEFAULT 0',
         'webhook_token': 'ALTER TABLE tasks ADD COLUMN webhook_token TEXT',
         'description': 'ALTER TABLE tasks ADD COLUMN description TEXT',
@@ -73,28 +83,27 @@ def migrate_database():
         'docker_image': 'ALTER TABLE tasks ADD COLUMN docker_image TEXT',
     }
 
-    for col, sql in new_columns.items():
-        if col not in columns:
+    for col, sql in new_task_columns.items():
+        if col not in tasks_cols:
             try:
                 cursor.execute(sql)
                 print(f"Migrated: Added {col} column to tasks table")
             except Exception as e:
-                print(f"Column {col} already exists or error: {e}")
+                print(f"Column {col} already exists: {e}")
 
-    # Check alert_configs table for ai_humanize
+    # New columns for alert_configs
     cursor.execute("PRAGMA table_info(alert_configs)")
     alert_cols = [col[1] for col in cursor.fetchall()]
 
     if 'ai_humanize' not in alert_cols:
         try:
             cursor.execute("ALTER TABLE alert_configs ADD COLUMN ai_humanize BOOLEAN DEFAULT 0")
-            print("Migrated: Added ai_humanize column to alert_configs table")
+            print("Migrated: Added ai_humanize column to alert_configs")
         except Exception as e:
-            print(f"Column ai_humanize already exists or error: {e}")
+            print(f"Column ai_humanize already exists: {e}")
 
-    # Create system_settings table if not exists
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'")
-    if not cursor.fetchone():
+    # Create system_settings table
+    if 'system_settings' not in existing_tables:
         cursor.execute("""
             CREATE TABLE system_settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,9 +116,8 @@ def migrate_database():
         """)
         print("Migrated: Created system_settings table")
 
-    # Create node_flows table if not exists
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='node_flows'")
-    if not cursor.fetchone():
+    # Create node_flows table
+    if 'node_flows' not in existing_tables:
         cursor.execute("""
             CREATE TABLE node_flows (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,6 +131,192 @@ def migrate_database():
             )
         """)
         print("Migrated: Created node_flows table")
+
+    # ============ AI Hub Tables ============
+
+    # Create ai_providers table
+    if 'ai_providers' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_providers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                api_base_url TEXT,
+                api_key TEXT,
+                is_enabled BOOLEAN DEFAULT 1,
+                is_primary BOOLEAN DEFAULT 0,
+                priority INTEGER DEFAULT 100,
+                rate_limit_rpm INTEGER,
+                rate_limit_tpm INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        print("Migrated: Created ai_providers table")
+
+    # Create ai_models table
+    if 'ai_models' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_models (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                provider_id INTEGER NOT NULL,
+                model_id TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                model_type TEXT NOT NULL,
+                context_window INTEGER,
+                is_enabled BOOLEAN DEFAULT 1,
+                cost_per_input_token REAL DEFAULT 0,
+                cost_per_output_token REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (provider_id) REFERENCES ai_providers(id)
+            )
+        """)
+        print("Migrated: Created ai_models table")
+
+    # Create ai_feature_routing table
+    if 'ai_feature_routing' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_feature_routing (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feature TEXT UNIQUE NOT NULL,
+                display_name TEXT NOT NULL,
+                primary_model_id INTEGER,
+                fallback_model_ids TEXT DEFAULT '[]',
+                is_enabled BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (primary_model_id) REFERENCES ai_models(id)
+            )
+        """)
+        print("Migrated: Created ai_feature_routing table")
+
+    # Create ai_prompt_templates table
+    if 'ai_prompt_templates' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_prompt_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feature TEXT UNIQUE NOT NULL,
+                display_name TEXT NOT NULL,
+                system_prompt TEXT,
+                user_template TEXT,
+                temperature REAL DEFAULT 0.7,
+                top_p REAL DEFAULT 0.9,
+                max_tokens INTEGER DEFAULT 2048,
+                context_lines INTEGER DEFAULT 100,
+                is_enabled BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        print("Migrated: Created ai_prompt_templates table")
+
+    # Create ai_semantic_cache table
+    if 'ai_semantic_cache' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_semantic_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cache_key TEXT NOT NULL,
+                feature TEXT NOT NULL,
+                prompt_hash TEXT NOT NULL,
+                response TEXT NOT NULL,
+                model_id INTEGER,
+                hit_count INTEGER DEFAULT 0,
+                first_hit_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_hit_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES ai_models(id)
+            )
+        """)
+        print("Migrated: Created ai_semantic_cache table")
+
+    # Create ai_rag_context table
+    if 'ai_rag_context' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_rag_context (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                context_type TEXT NOT NULL,
+                context_key TEXT NOT NULL,
+                content TEXT NOT NULL,
+                is_enabled BOOLEAN DEFAULT 1,
+                injection_position TEXT DEFAULT 'system',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        print("Migrated: Created ai_rag_context table")
+
+    # Create ai_permissions table
+    if 'ai_permissions' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                permission_level INTEGER DEFAULT 1,
+                permission_name TEXT NOT NULL,
+                description TEXT,
+                requires_confirm BOOLEAN DEFAULT 1,
+                is_enabled BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Insert default permissions
+        cursor.execute("""INSERT INTO ai_permissions (permission_level, permission_name, description, requires_confirm, is_enabled) VALUES
+            (1, 'dry_run', '仅建议 - AI 仅提供建议，不执行任何修改', 0, 1),
+            (2, 'script_replace', '允许一键替换脚本 - AI 可以修改并替换脚本内容', 1, 1),
+            (3, 'config_modify', '允许修改配置 - AI 可以修改任务配置并自动重试', 1, 1)""")
+        print("Migrated: Created ai_permissions table with defaults")
+
+    # Create ai_usage_stats table
+    if 'ai_usage_stats' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_usage_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feature TEXT NOT NULL,
+                model_id INTEGER,
+                provider_id INTEGER,
+                input_tokens INTEGER DEFAULT 0,
+                output_tokens INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                cost_usd REAL DEFAULT 0,
+                request_count INTEGER DEFAULT 0,
+                cache_hit_count INTEGER DEFAULT 0,
+                error_count INTEGER DEFAULT 0,
+                date TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES ai_models(id),
+                FOREIGN KEY (provider_id) REFERENCES ai_providers(id)
+            )
+        """)
+        print("Migrated: Created ai_usage_stats table")
+
+    # Create ai_audit_logs table
+    if 'ai_audit_logs' not in existing_tables:
+        cursor.execute("""
+            CREATE TABLE ai_audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                feature TEXT NOT NULL,
+                model_id INTEGER,
+                provider_id INTEGER,
+                prompt TEXT NOT NULL,
+                system_prompt TEXT,
+                response TEXT,
+                error_message TEXT,
+                status TEXT NOT NULL,
+                latency_ms INTEGER,
+                input_tokens INTEGER DEFAULT 0,
+                output_tokens INTEGER DEFAULT 0,
+                cost_usd REAL DEFAULT 0,
+                cache_hit BOOLEAN DEFAULT 0,
+                fallback_used BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES ai_models(id),
+                FOREIGN KEY (provider_id) REFERENCES ai_providers(id)
+            )
+        """)
+        print("Migrated: Created ai_audit_logs table")
 
     conn.commit()
     conn.close()
@@ -1211,6 +1405,340 @@ def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends(get_d
         remove_task_job(task_id)
 
     return task
+
+
+# ============ AI Hub API Endpoints ============
+
+@app.get("/ai/providers", response_model=List[AIProviderResponse])
+def list_ai_providers(db: Session = Depends(get_db)):
+    """List all AI providers"""
+    return db.query(AIProvider).order_by(AIProvider.priority).all()
+
+
+@app.post("/ai/providers", response_model=AIProviderResponse)
+def create_ai_provider(provider_data: AIProviderCreate, db: Session = Depends(get_db)):
+    """Create a new AI provider"""
+    provider = AIProvider(
+        name=provider_data.name,
+        display_name=provider_data.display_name,
+        api_base_url=provider_data.api_base_url,
+        api_key=provider_data.api_key,
+        is_enabled=provider_data.is_enabled,
+        is_primary=provider_data.is_primary,
+        priority=provider_data.priority,
+        rate_limit_rpm=provider_data.rate_limit_rpm,
+        rate_limit_tpm=provider_data.rate_limit_tpm,
+    )
+    db.add(provider)
+    db.commit()
+    db.refresh(provider)
+    return provider
+
+
+@app.put("/ai/providers/{provider_id}", response_model=AIProviderResponse)
+def update_ai_provider(provider_id: int, provider_data: AIProviderUpdate, db: Session = Depends(get_db)):
+    """Update an AI provider"""
+    provider = db.query(AIProvider).filter(AIProvider.id == provider_id).first()
+    if not provider:
+        raise HTTPException(status_code=404, detail="AI Provider not found")
+
+    for field, value in provider_data.model_dump(exclude_unset=True).items():
+        setattr(provider, field, value)
+
+    db.commit()
+    db.refresh(provider)
+    return provider
+
+
+@app.delete("/ai/providers/{provider_id}")
+def delete_ai_provider(provider_id: int, db: Session = Depends(get_db)):
+    """Delete an AI provider"""
+    provider = db.query(AIProvider).filter(AIProvider.id == provider_id).first()
+    if not provider:
+        raise HTTPException(status_code=404, detail="AI Provider not found")
+
+    db.delete(provider)
+    db.commit()
+    return {"message": "AI Provider deleted successfully"}
+
+
+@app.get("/ai/models", response_model=List[AIModelResponse])
+def list_ai_models(db: Session = Depends(get_db)):
+    """List all AI models"""
+    return db.query(AIModel).all()
+
+
+@app.post("/ai/models", response_model=AIModelResponse)
+def create_ai_model(model_data: AIModelCreate, db: Session = Depends(get_db)):
+    """Create a new AI model"""
+    model = AIModel(
+        provider_id=model_data.provider_id,
+        model_id=model_data.model_id,
+        display_name=model_data.display_name,
+        model_type=model_data.model_type,
+        context_window=model_data.context_window,
+        is_enabled=model_data.is_enabled,
+        cost_per_input_token=model_data.cost_per_input_token,
+        cost_per_output_token=model_data.cost_per_output_token,
+    )
+    db.add(model)
+    db.commit()
+    db.refresh(model)
+    return model
+
+
+@app.put("/ai/models/{model_id}", response_model=AIModelResponse)
+def update_ai_model(model_id: int, model_data: AIModelUpdate, db: Session = Depends(get_db)):
+    """Update an AI model"""
+    model = db.query(AIModel).filter(AIModel.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="AI Model not found")
+
+    for field, value in model_data.model_dump(exclude_unset=True).items():
+        setattr(model, field, value)
+
+    db.commit()
+    db.refresh(model)
+    return model
+
+
+@app.delete("/ai/models/{model_id}")
+def delete_ai_model(model_id: int, db: Session = Depends(get_db)):
+    """Delete an AI model"""
+    model = db.query(AIModel).filter(AIModel.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="AI Model not found")
+
+    db.delete(model)
+    db.commit()
+    return {"message": "AI Model deleted successfully"}
+
+
+@app.get("/ai/feature-routing", response_model=List[AIFeatureRoutingResponse])
+def list_feature_routing(db: Session = Depends(get_db)):
+    """List all feature routing configurations"""
+    return db.query(AIFeatureRouting).all()
+
+
+@app.post("/ai/feature-routing", response_model=AIFeatureRoutingResponse)
+def create_feature_routing(routing_data: AIFeatureRoutingCreate, db: Session = Depends(get_db)):
+    """Create a new feature routing configuration"""
+    routing = AIFeatureRouting(
+        feature=routing_data.feature,
+        display_name=routing_data.display_name,
+        primary_model_id=routing_data.primary_model_id,
+        fallback_model_ids=routing_data.fallback_model_ids,
+        is_enabled=routing_data.is_enabled,
+    )
+    db.add(routing)
+    db.commit()
+    db.refresh(routing)
+    return routing
+
+
+@app.put("/ai/feature-routing/{routing_id}", response_model=AIFeatureRoutingResponse)
+def update_feature_routing(routing_id: int, routing_data: AIFeatureRoutingUpdate, db: Session = Depends(get_db)):
+    """Update a feature routing configuration"""
+    routing = db.query(AIFeatureRouting).filter(AIFeatureRouting.id == routing_id).first()
+    if not routing:
+        raise HTTPException(status_code=404, detail="Feature routing not found")
+
+    for field, value in routing_data.model_dump(exclude_unset=True).items():
+        setattr(routing, field, value)
+
+    db.commit()
+    db.refresh(routing)
+    return routing
+
+
+@app.delete("/ai/feature-routing/{routing_id}")
+def delete_feature_routing(routing_id: int, db: Session = Depends(get_db)):
+    """Delete a feature routing configuration"""
+    routing = db.query(AIFeatureRouting).filter(AIFeatureRouting.id == routing_id).first()
+    if not routing:
+        raise HTTPException(status_code=404, detail="Feature routing not found")
+
+    db.delete(routing)
+    db.commit()
+    return {"message": "Feature routing deleted successfully"}
+
+
+@app.get("/ai/prompt-templates", response_model=List[AIPromptTemplateResponse])
+def list_prompt_templates(db: Session = Depends(get_db)):
+    """List all prompt templates"""
+    return db.query(AIPromptTemplate).all()
+
+
+@app.post("/ai/prompt-templates", response_model=AIPromptTemplateResponse)
+def create_prompt_template(template_data: AIPromptTemplateCreate, db: Session = Depends(get_db)):
+    """Create a new prompt template"""
+    template = AIPromptTemplate(
+        feature=template_data.feature,
+        display_name=template_data.display_name,
+        system_prompt=template_data.system_prompt,
+        user_template=template_data.user_template,
+        temperature=template_data.temperature,
+        top_p=template_data.top_p,
+        max_tokens=template_data.max_tokens,
+        context_lines=template_data.context_lines,
+        is_enabled=template_data.is_enabled,
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@app.put("/ai/prompt-templates/{template_id}", response_model=AIPromptTemplateResponse)
+def update_prompt_template(template_id: int, template_data: AIPromptTemplateUpdate, db: Session = Depends(get_db)):
+    """Update a prompt template"""
+    template = db.query(AIPromptTemplate).filter(AIPromptTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Prompt template not found")
+
+    for field, value in template_data.model_dump(exclude_unset=True).items():
+        setattr(template, field, value)
+
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@app.delete("/ai/prompt-templates/{template_id}")
+def delete_prompt_template(template_id: int, db: Session = Depends(get_db)):
+    """Delete a prompt template"""
+    template = db.query(AIPromptTemplate).filter(AIPromptTemplate.id == template_id).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Prompt template not found")
+
+    db.delete(template)
+    db.commit()
+    return {"message": "Prompt template deleted successfully"}
+
+
+@app.get("/ai/rag-context", response_model=List[AIRAGContextResponse])
+def list_rag_contexts(db: Session = Depends(get_db)):
+    """List all RAG contexts"""
+    return db.query(AIRAGContext).all()
+
+
+@app.post("/ai/rag-context", response_model=AIRAGContextResponse)
+def create_rag_context(rag_data: AIRAGContextCreate, db: Session = Depends(get_db)):
+    """Create a new RAG context"""
+    rag = AIRAGContext(
+        context_type=rag_data.context_type,
+        context_key=rag_data.context_key,
+        content=rag_data.content,
+        is_enabled=rag_data.is_enabled,
+        injection_position=rag_data.injection_position,
+    )
+    db.add(rag)
+    db.commit()
+    db.refresh(rag)
+    return rag
+
+
+@app.put("/ai/rag-context/{rag_id}", response_model=AIRAGContextResponse)
+def update_rag_context(rag_id: int, rag_data: AIRAGContextUpdate, db: Session = Depends(get_db)):
+    """Update a RAG context"""
+    rag = db.query(AIRAGContext).filter(AIRAGContext.id == rag_id).first()
+    if not rag:
+        raise HTTPException(status_code=404, detail="RAG context not found")
+
+    for field, value in rag_data.model_dump(exclude_unset=True).items():
+        setattr(rag, field, value)
+
+    db.commit()
+    db.refresh(rag)
+    return rag
+
+
+@app.delete("/ai/rag-context/{rag_id}")
+def delete_rag_context(rag_id: int, db: Session = Depends(get_db)):
+    """Delete a RAG context"""
+    rag = db.query(AIRAGContext).filter(AIRAGContext.id == rag_id).first()
+    if not rag:
+        raise HTTPException(status_code=404, detail="RAG context not found")
+
+    db.delete(rag)
+    db.commit()
+    return {"message": "RAG context deleted successfully"}
+
+
+@app.get("/ai/permissions", response_model=List[AIPermissionLevelResponse])
+def list_permissions(db: Session = Depends(get_db)):
+    """List all AI permission levels"""
+    return db.query(AIPermissionLevel).all()
+
+
+@app.post("/ai/permissions", response_model=AIPermissionLevelResponse)
+def create_permission(perm_data: AIPermissionLevelCreate, db: Session = Depends(get_db)):
+    """Create a new AI permission level"""
+    perm = AIPermissionLevel(
+        permission_level=perm_data.permission_level,
+        permission_name=perm_data.permission_name,
+        description=perm_data.description,
+        requires_confirm=perm_data.requires_confirm,
+        is_enabled=perm_data.is_enabled,
+    )
+    db.add(perm)
+    db.commit()
+    db.refresh(perm)
+    return perm
+
+
+@app.put("/ai/permissions/{perm_id}", response_model=AIPermissionLevelResponse)
+def update_permission(perm_id: int, perm_data: AIPermissionLevelUpdate, db: Session = Depends(get_db)):
+    """Update an AI permission level"""
+    perm = db.query(AIPermissionLevel).filter(AIPermissionLevel.id == perm_id).first()
+    if not perm:
+        raise HTTPException(status_code=404, detail="Permission level not found")
+
+    for field, value in perm_data.model_dump(exclude_unset=True).items():
+        setattr(perm, field, value)
+
+    db.commit()
+    db.refresh(perm)
+    return perm
+
+
+@app.delete("/ai/permissions/{perm_id}")
+def delete_permission(perm_id: int, db: Session = Depends(get_db)):
+    """Delete an AI permission level"""
+    perm = db.query(AIPermissionLevel).filter(AIPermissionLevel.id == perm_id).first()
+    if not perm:
+        raise HTTPException(status_code=404, detail="Permission level not found")
+
+    db.delete(perm)
+    db.commit()
+    return {"message": "Permission level deleted successfully"}
+
+
+@app.get("/ai/usage-stats", response_model=AIUsageStatsResponse)
+def get_usage_stats(db: Session = Depends(get_db)):
+    """Get AI usage statistics for today"""
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    stats = db.query(AIUsageStats).filter(AIUsageStats.date == today).all()
+
+    total_requests = sum(s.request_count for s in stats)
+    total_cost = sum(s.cost_usd for s in stats)
+    input_tokens = sum(s.input_tokens for s in stats)
+    output_tokens = sum(s.output_tokens for s in stats)
+
+    return AIUsageStatsResponse(
+        total_requests=total_requests,
+        total_cost=total_cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+
+
+@app.get("/ai/audit-logs", response_model=List[AIAuditLogResponse])
+def list_audit_logs(db: Session = Depends(get_db)):
+    """List AI audit logs"""
+    return db.query(AIAuditLog).order_by(AIAuditLog.created_at.desc()).limit(100).all()
 
 
 if __name__ == "__main__":

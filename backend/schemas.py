@@ -291,3 +291,232 @@ class SystemSettingsResponse(BaseModel):
 class SystemSettingsUpdate(BaseModel):
     minimax_api_key: Optional[str] = None
     minimax_group_id: Optional[str] = None
+
+
+# ============ AI Hub Schemas ============
+
+class AIProviderBase(BaseModel):
+    name: str
+    display_name: str
+    api_base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    is_enabled: bool = True
+    is_primary: bool = False
+    priority: int = 100
+    rate_limit_rpm: Optional[int] = None
+    rate_limit_tpm: Optional[int] = None
+
+
+class AIProviderCreate(AIProviderBase):
+    pass
+
+
+class AIProviderUpdate(BaseModel):
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    api_base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    is_enabled: Optional[bool] = None
+    is_primary: Optional[bool] = None
+    priority: Optional[int] = None
+    rate_limit_rpm: Optional[int] = None
+    rate_limit_tpm: Optional[int] = None
+
+
+class AIProviderResponse(AIProviderBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIModelBase(BaseModel):
+    model_config = {'protected_namespaces': ()}
+
+    provider_id: int
+    model_id: str
+    display_name: str
+    model_type: str = "chat"
+    context_window: Optional[int] = None
+    is_enabled: bool = True
+    cost_per_input_token: float = 0
+    cost_per_output_token: float = 0
+
+
+class AIModelCreate(AIModelBase):
+    pass
+
+
+class AIModelUpdate(BaseModel):
+    provider_id: Optional[int] = None
+    model_id: Optional[str] = None
+    display_name: Optional[str] = None
+    model_type: Optional[str] = None
+    context_window: Optional[int] = None
+    is_enabled: Optional[bool] = None
+    cost_per_input_token: Optional[float] = None
+    cost_per_output_token: Optional[float] = None
+
+
+class AIModelResponse(AIModelBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIFeatureRoutingBase(BaseModel):
+    feature: str
+    display_name: str
+    primary_model_id: Optional[int] = None
+    fallback_model_ids: str = "[]"
+    is_enabled: bool = True
+
+
+class AIFeatureRoutingCreate(AIFeatureRoutingBase):
+    pass
+
+
+class AIFeatureRoutingUpdate(BaseModel):
+    feature: Optional[str] = None
+    display_name: Optional[str] = None
+    primary_model_id: Optional[int] = None
+    fallback_model_ids: Optional[str] = None
+    is_enabled: Optional[bool] = None
+
+
+class AIFeatureRoutingResponse(AIFeatureRoutingBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIPromptTemplateBase(BaseModel):
+    feature: str
+    display_name: str
+    system_prompt: Optional[str] = None
+    user_template: Optional[str] = None
+    temperature: float = 0.7
+    top_p: float = 0.9
+    max_tokens: int = 2048
+    context_lines: int = 100
+    is_enabled: bool = True
+
+
+class AIPromptTemplateCreate(AIPromptTemplateBase):
+    pass
+
+
+class AIPromptTemplateUpdate(BaseModel):
+    feature: Optional[str] = None
+    display_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_template: Optional[str] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    max_tokens: Optional[int] = None
+    context_lines: Optional[int] = None
+    is_enabled: Optional[bool] = None
+
+
+class AIPromptTemplateResponse(AIPromptTemplateBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIRAGContextBase(BaseModel):
+    context_type: str
+    context_key: str
+    content: str
+    is_enabled: bool = True
+    injection_position: str = "system"
+
+
+class AIRAGContextCreate(AIRAGContextBase):
+    pass
+
+
+class AIRAGContextUpdate(BaseModel):
+    context_type: Optional[str] = None
+    context_key: Optional[str] = None
+    content: Optional[str] = None
+    is_enabled: Optional[bool] = None
+    injection_position: Optional[str] = None
+
+
+class AIRAGContextResponse(AIRAGContextBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIPermissionLevelBase(BaseModel):
+    permission_level: int = 1
+    permission_name: str
+    description: Optional[str] = None
+    requires_confirm: bool = True
+    is_enabled: bool = True
+
+
+class AIPermissionLevelCreate(AIPermissionLevelBase):
+    pass
+
+
+class AIPermissionLevelUpdate(BaseModel):
+    permission_level: Optional[int] = None
+    permission_name: Optional[str] = None
+    description: Optional[str] = None
+    requires_confirm: Optional[bool] = None
+    is_enabled: Optional[bool] = None
+
+
+class AIPermissionLevelResponse(AIPermissionLevelBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AIUsageStatsResponse(BaseModel):
+    total_requests: int = 0
+    total_cost: float = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+
+class AIAuditLogResponse(BaseModel):
+    id: int
+    feature: str
+    model_id: Optional[int] = None
+    provider_id: Optional[int] = None
+    prompt: str
+    system_prompt: Optional[str] = None
+    response: Optional[str] = None
+    error_message: Optional[str] = None
+    status: str
+    latency_ms: Optional[int] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0
+    cache_hit: bool = False
+    fallback_used: bool = False
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
