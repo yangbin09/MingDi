@@ -69,3 +69,33 @@ MINIMAX_GROUP_ID=your_group_id_here
 1. **自主循环**：每完成清单中的一项，请自动勾选 `[x]` 并直接开始下一项，无需询问。
 2. **错误处理**：遇到报错请自行修复，直到测试通过。
 3. **完成标准**：直到所有清单项目全部勾选完成，并演示项目可运行后，方可停止。
+
+---
+
+# PyCron-Master Phase 11: Element Plus 企业级 UI 重构 (已完成)
+
+## 核心目标
+将前端从原生 HTML 和 Tailwind 迁移到 Element Plus 组件库，实现企业级 UI 规范。
+
+### 一、核心依赖安装与全局配置 (已完成)
+- [x] **1. 安装依赖** - 安装 `element-plus` 和 `@element-plus/icons-vue`
+- [x] **2. 全局注册** - 在 main.js 中引入 Element Plus 及其全局 CSS 样式，注册所有图标组件
+- [x] **3. 暗色模式兼容** - 修改 ThemeSwitcher，当切换到暗色主题时自动给 `<html>` 追加 `class="dark"`
+
+### 二、全局 Layout 与导航重构 (已完成)
+- [x] **4. 骨架重写** - 使用 `<el-container>`, `<el-aside>`, `<el-header>`, `<el-main>` 重新搭建全局框架
+- [x] **5. 侧边栏菜单** - 将左侧导航重构为 `<el-menu>` 组件，支持路由联动 (`router` 模式)
+
+### 三、核心业务组件迁移 (已完成)
+- [x] **6. 任务列表页面** - 替换为 `<el-table>`，状态列使用 `<el-tag>`，启停使用 `<el-switch>`，操作列使用 `<el-button>` + `<el-tooltip>`
+- [x] **7. 表单与弹窗** - 新建/编辑任务改用 `<el-drawer>`，表单使用 `<el-form>` + 校验规则
+- [x] **8. AI Hub 重构** - 使用 `<el-tabs>` 拆分为服务商、模型、路由、提示词等标签页
+
+### 四、交互反馈升级 (已完成)
+- [x] **9. 全局消息提示** - 使用 `ElMessage` 和 `ElNotification` 替换所有 `alert()` 提示
+
+### 五、其他页面迁移 (已完成)
+- [x] **日志中心** - 使用 `<el-table>`, `<el-select>`, `<el-date-picker>` 重构过滤器和表格
+- [x] **AI 助手** - 使用 `<el-card>`, `<el-input>`, `<el-button>` 重构工具卡片
+- [x] **编排中心** - 使用 `<el-card>`, `<el-dialog>` 重构流程列表和编辑器
+- [x] **系统设置** - 使用 `<el-tabs>`, `<el-dialog>` 重构所有设置面板

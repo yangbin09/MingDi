@@ -25,7 +25,7 @@
           :collapse="isSidebarCollapsed"
         >
           <el-menu-item index="/">
-            <el-icon><ChartBar /></el-icon>
+            <el-icon><PieChart /></el-icon>
             <template #title>仪表盘</template>
           </el-menu-item>
           <el-menu-item index="/tasks">
@@ -89,7 +89,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
-import { ChartBar, List, Document, MagicStick, Connection, Setting, Refresh, Cpu } from '@element-plus/icons-vue'
+import { List, Document, MagicStick, Connection, Setting, Refresh, Cpu, PieChart } from '@element-plus/icons-vue'
 import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import Scratchpad from './components/Scratchpad.vue'
 
