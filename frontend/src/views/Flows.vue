@@ -1,309 +1,199 @@
 <template>
-  <div class="space-y-6">
+  <div class="flows-page space-y-6">
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold" style="color: var(--text-main);">编排中心</h1>
+        <h1 class="text-2xl font-bold" style="color: var(--text-main);">
+          <el-icon class="mr-2"><Connection /></el-icon>
+          编排中心
+        </h1>
         <p class="text-sm mt-1" style="color: var(--text-muted);">可视化 DAG 节点编排与流程管理</p>
       </div>
-      <button
-        @click="createNewFlow"
-        class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all"
-        :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-      >
-        <PlusIcon class="w-5 h-5" />
+      <el-button type="primary" @click="createNewFlow">
+        <el-icon><Plus /></el-icon>
         新建流程
-      </button>
+      </el-button>
     </div>
 
     <!-- Flows List -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div
-        v-for="flow in flows"
-        :key="flow.id"
-        class="card rounded-xl p-5 cursor-pointer theme-transition"
-        @click="openFlow(flow)"
-        @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-        @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--bg-secondary)')"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-lg flex items-center justify-center"
-              :style="{ backgroundColor: 'var(--color-purple-subtle)' }"
-            >
-              <ViewColumnsIcon class="w-5 h-5" style="color: var(--color-purple);" />
+    <el-row :gutter="16">
+      <el-col :xs="24" :sm="12" :md="8" v-for="flow in flows" :key="flow.id">
+        <el-card shadow="hover" class="flow-card" @click="openFlow(flow)">
+          <div class="flow-header">
+            <el-avatar :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)' }">
+              <el-icon><Connection /></el-icon>
+            </el-avatar>
+            <div class="flex-1">
+              <div class="font-medium">{{ flow.name }}</div>
+              <div class="text-xs" style="color: var(--text-muted);">{{ flow.description || '无描述' }}</div>
             </div>
-            <div>
-              <h3 class="font-medium" style="color: var(--text-main);">{{ flow.name }}</h3>
-              <p class="text-xs" style="color: var(--text-muted);">{{ flow.description || '无描述' }}</p>
-            </div>
+            <el-tag :type="flow.is_active ? 'success' : 'info'" size="small">
+              {{ flow.is_active ? '启用' : '禁用' }}
+            </el-tag>
           </div>
-          <span
-            class="px-2 py-0.5 rounded text-xs font-medium"
-            :style="flow.is_active
-              ? { backgroundColor: 'var(--color-success-subtle)', color: 'var(--color-success)' }
-              : { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
-          >
-            {{ flow.is_active ? '启用' : '禁用' }}
-          </span>
-        </div>
-        <div class="flex items-center justify-between">
-          <div class="flex gap-1">
-            <button
-              @click.stop="executeFlow(flow)"
-              class="p-2 rounded-lg transition-colors"
-              :style="{ color: 'var(--color-success)' }"
-              title="执行流程"
-            >
-              <PlayIcon class="w-4 h-4" />
-            </button>
-            <button
-              @click.stop="editFlowName(flow)"
-              class="p-2 rounded-lg transition-colors"
-              :style="{ color: 'var(--text-muted)' }"
-              title="编辑名称"
-            >
-              <PencilIcon class="w-4 h-4" />
-            </button>
-            <button
-              @click.stop="deleteFlow(flow)"
-              class="p-2 rounded-lg transition-colors"
-              :style="{ color: 'var(--color-danger)' }"
-              title="删除"
-            >
-              <TrashIcon class="w-4 h-4" />
-            </button>
+          <div class="flow-footer">
+            <el-button-group>
+              <el-tooltip content="执行流程" placement="top">
+                <el-button size="small" type="success" plain @click.stop="executeFlow(flow)">
+                  <el-icon><VideoPlay /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="编辑" placement="top">
+                <el-button size="small" type="primary" plain @click.stop="openFlow(flow)">
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+              </el-tooltip>
+              <el-tooltip content="删除" placement="top">
+                <el-button size="small" type="danger" plain @click.stop="deleteFlow(flow)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-tooltip>
+            </el-button-group>
+            <span class="text-xs" style="color: var(--text-disabled);">
+              {{ formatDate(flow.updated_at) }}
+            </span>
           </div>
-          <span class="text-xs" style="color: var(--text-disabled);">
-            {{ formatDate(flow.updated_at) }}
-          </span>
-        </div>
-      </div>
+        </el-card>
+      </el-col>
 
       <!-- Empty State -->
-      <div
-        v-if="flows.length === 0"
-        class="col-span-full card rounded-xl p-12 text-center"
-      >
-        <div
-          class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-          :style="{ backgroundColor: 'var(--bg-tertiary)' }"
-        >
-          <ViewColumnsIcon class="w-8 h-8" style="color: var(--text-muted); opacity: 0.5;" />
-        </div>
-        <p class="text-lg" style="color: var(--text-muted);">暂无编排流程</p>
-        <p class="text-sm mt-1" style="color: var(--text-disabled);">创建第一个节点编排流程</p>
-        <button
-          @click="createNewFlow"
-          class="mt-4 px-4 py-2 rounded-lg font-medium"
-          :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-        >
-          新建流程
-        </button>
-      </div>
-    </div>
+      <el-col v-if="flows.length === 0" :span="24">
+        <el-card shadow="never" class="empty-card">
+          <el-empty description="暂无编排流程" />
+          <el-button type="primary" @click="createNewFlow">
+            <el-icon><Plus /></el-icon>
+            新建流程
+          </el-button>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <!-- Flow Editor Modal -->
-    <div v-if="showEditor" class="fixed inset-0 z-50 overflow-hidden">
-      <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }" @click="closeEditor"></div>
-      <div
-        class="absolute inset-4 md:inset-8 rounded-2xl flex flex-col shadow-2xl overflow-hidden"
-        :style="{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)' }"
-      >
-        <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4" :style="{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }">
-          <div class="flex items-center gap-3">
-            <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-purple), var(--color-primary))' }"></div>
-            <input
-              v-model="editingFlow.name"
-              type="text"
-              class="text-lg font-semibold bg-transparent border-none outline-none"
-              style="color: var(--text-main);"
-              placeholder="流程名称..."
-            />
-          </div>
-          <div class="flex items-center gap-3">
-            <button
-              @click="saveFlow"
-              class="px-4 py-2 rounded-lg font-medium transition-all"
-              :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-            >
-              保存
-            </button>
-            <button
-              @click="executeCurrentFlow"
-              :disabled="executing"
-              class="px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2"
-              :style="{ backgroundColor: 'var(--color-success)', color: 'var(--text-inverse)' }"
-            >
-              <PlayIcon class="w-4 h-4" />
-              {{ executing ? '执行中...' : '执行' }}
-            </button>
-            <button
-              @click="closeEditor"
-              class="p-2 rounded-lg transition-colors"
-              :style="{ color: 'var(--text-muted)' }"
-            >
-              <XMarkIcon class="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Canvas -->
-        <div class="flex-1 relative overflow-hidden flex">
-          <!-- Canvas Area -->
-          <div
-            class="flex-1 relative overflow-auto"
-            :style="{ backgroundColor: 'var(--bg-tertiary)' }"
-            @mousedown="onCanvasMouseDown"
-          >
-            <!-- Grid Background -->
-            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px); background-size: 20px 20px;"></div>
-
-            <!-- Nodes -->
-            <div
-              v-for="node in editingFlow.nodes"
-              :key="node.id"
-              class="absolute bg-gray-800 border border-gray-600 rounded-lg p-4 cursor-move min-w-48 shadow-lg"
-              :style="{ left: node.x + 'px', top: node.y + 'px' }"
-              @mousedown.stop="onNodeMouseDown($event, node)"
-            >
-              <div class="flex items-center gap-2 mb-2">
-                <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: getNodeColor(node.type) }"></span>
-                <span class="text-sm font-medium text-gray-100">{{ node.label }}</span>
-              </div>
-              <div class="text-xs text-gray-400">{{ node.description }}</div>
-              <div v-if="node.task_id" class="mt-2 text-xs px-2 py-1 rounded" :style="{ backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }">
-                任务 #{{ node.task_id }}
-              </div>
-            </div>
-
-            <!-- SVG for edges -->
-            <svg class="absolute inset-0 pointer-events-none" style="width: 100%; height: 100%;">
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                  <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-purple)" />
-                </marker>
-              </defs>
-              <path
-                v-for="edge in editingFlow.edges"
-                :key="edge.id"
-                :d="getEdgePath(edge)"
-                fill="none"
-                stroke="var(--color-purple)"
-                stroke-width="2"
-                marker-end="url(#arrowhead)"
-              />
-            </svg>
-          </div>
-
-          <!-- Toolbar -->
-          <div class="w-64 p-4 flex flex-col gap-4" :style="{ backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-subtle)' }">
-            <!-- Add Node -->
-            <div>
-              <h4 class="text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">添加工具</h4>
-              <div class="space-y-2">
-                <button
-                  @click="addNewNode"
-                  class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all"
-                  :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)' }"
-                >
-                  <PlusIcon class="w-4 h-4" />
-                  添加节点
-                </button>
-              </div>
-            </div>
-
-            <!-- Available Tasks -->
-            <div class="flex-1 overflow-auto">
-              <h4 class="text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">可用任务</h4>
-              <div class="space-y-2">
-                <div
-                  v-for="task in tasks"
-                  :key="task.id"
-                  class="p-2 rounded-lg cursor-pointer transition-all"
-                  :style="{ backgroundColor: 'var(--bg-tertiary)' }"
-                  draggable="true"
-                  @dragstart="onTaskDragStart($event, task)"
-                  @click="addTaskAsNode(task)"
-                >
-                  <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: getStatusColor(task.status) }"></span>
-                    <span class="text-sm text-gray-200 truncate">{{ task.name }}</span>
-                  </div>
-                  <div class="text-xs text-gray-500 truncate mt-1">{{ task.script_path }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Edge Mode -->
-            <div>
-              <h4 class="text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">连接模式</h4>
-              <div class="flex gap-2">
-                <button
-                  @click="edgeMode = !edgeMode"
-                  class="flex-1 px-3 py-2 rounded-lg text-sm transition-all"
-                  :style="edgeMode
-                    ? { backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }
-                    : { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
-                >
-                  {{ edgeMode ? '连接中...' : '连线模式' }}
-                </button>
-                <button
-                  @click="clearAll"
-                  class="px-3 py-2 rounded-lg text-sm transition-all"
-                  :style="{ backgroundColor: 'var(--color-danger-subtle)', color: 'var(--color-danger)' }"
-                >
-                  清空
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Execution Result Toast -->
-    <div
-      v-if="executionResult"
-      class="fixed bottom-6 right-6 z-50 rounded-lg p-4 shadow-lg max-w-md"
-      :style="{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }"
+    <!-- Flow Editor Dialog -->
+    <el-dialog
+      v-model="showEditor"
+      :title="editingFlow.name || '流程编辑器'"
+      width="90%"
+      top="5vh"
+      destroy-on-close
+      class="flow-editor-dialog"
     >
-      <div class="flex items-start gap-3">
-        <div
-          class="w-8 h-8 rounded-full flex items-center justify-center"
-          :style="{ backgroundColor: executionResult.success ? 'var(--color-success-subtle)' : 'var(--color-danger-subtle)' }"
-        >
-          <CheckCircleIcon v-if="executionResult.success" class="w-5 h-5" style="color: var(--color-success);" />
-          <XCircleIcon v-else class="w-5 h-5" style="color: var(--color-danger);" />
+      <div class="editor-toolbar">
+        <el-input v-model="editingFlow.name" placeholder="流程名称" class="flow-name-input" />
+        <div class="toolbar-actions">
+          <el-button type="primary" @click="saveFlow">
+            <el-icon><Check /></el-icon>
+            保存
+          </el-button>
+          <el-button type="success" @click="executeCurrentFlow" :loading="executing">
+            <el-icon><VideoPlay /></el-icon>
+            {{ executing ? '执行中...' : '执行' }}
+          </el-button>
         </div>
-        <div class="flex-1">
-          <h4 class="font-medium" style="color: var(--text-main);">{{ executionResult.success ? '执行完成' : '执行失败' }}</h4>
-          <p class="text-sm mt-1" style="color: var(--text-muted);">{{ executionResult.message }}</p>
-          <div v-if="executionResult.results" class="mt-2 text-xs">
-            <div v-for="r in executionResult.results" :key="r.node_id" class="flex gap-2">
-              <span style="color: var(--text-muted);">节点 {{ r.node_id }}:</span>
-              <span :style="{ color: r.status === 'triggered' ? 'var(--color-success)' : 'var(--color-danger)' }">
-                {{ r.status === 'triggered' ? '已触发' : r.status }}
-              </span>
+      </div>
+
+      <div class="editor-container">
+        <!-- Canvas Area -->
+        <div class="canvas-area" ref="canvasRef">
+          <!-- Grid Background -->
+          <div class="grid-bg"></div>
+
+          <!-- Nodes -->
+          <div
+            v-for="node in editingFlow.nodes"
+            :key="node.id"
+            class="flow-node"
+            :style="{ left: node.x + 'px', top: node.y + 'px' }"
+            @mousedown="onNodeMouseDown($event, node)"
+          >
+            <div class="node-header">
+              <span class="node-dot" :style="{ backgroundColor: getNodeColor(node.type) }"></span>
+              <span class="node-label">{{ node.label }}</span>
+            </div>
+            <div class="node-desc">{{ node.description }}</div>
+            <div v-if="node.task_id" class="node-task">
+              任务 #{{ node.task_id }}
+            </div>
+          </div>
+
+          <!-- SVG for edges -->
+          <svg class="edges-svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="var(--color-purple)" />
+              </marker>
+            </defs>
+            <path
+              v-for="edge in editingFlow.edges"
+              :key="edge.id"
+              :d="getEdgePath(edge)"
+              fill="none"
+              stroke="var(--color-purple)"
+              stroke-width="2"
+              marker-end="url(#arrowhead)"
+            />
+          </svg>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="editor-sidebar">
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">添加工具</h4>
+            <el-button class="w-full" @click="addNewNode">
+              <el-icon><Plus /></el-icon>
+              添加节点
+            </el-button>
+          </div>
+
+          <div class="sidebar-section flex-1 overflow-auto">
+            <h4 class="sidebar-title">可用任务</h4>
+            <div class="task-list">
+              <div
+                v-for="task in tasks"
+                :key="task.id"
+                class="task-item"
+                @click="addTaskAsNode(task)"
+              >
+                <span class="task-dot" :style="{ backgroundColor: getStatusColor(task.status) }"></span>
+                <span class="task-name">{{ task.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">连接模式</h4>
+            <div class="flex gap-2">
+              <el-button
+                :type="edgeMode ? 'primary' : 'default'"
+                @click="edgeMode = !edgeMode"
+                class="flex-1"
+              >
+                {{ edgeMode ? '连线中...' : '连线模式' }}
+              </el-button>
+              <el-button type="danger" @click="clearAll">清空</el-button>
             </div>
           </div>
         </div>
-        <button @click="executionResult = null" class="p-1">
-          <XMarkIcon class="w-4 h-4" style="color: var(--text-muted);" />
-        </button>
       </div>
-    </div>
+    </el-dialog>
+
+    <!-- Execution Result -->
+    <el-notification
+      v-if="executionResult"
+      :title="executionResult.success ? '执行完成' : '执行失败'"
+      :type="executionResult.success ? 'success' : 'error'"
+      :description="executionResult.message"
+      position="bottom-right"
+      @close="executionResult = null"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  PlusIcon, ViewColumnsIcon, PlayIcon, PencilIcon,
-  TrashIcon, XMarkIcon, CheckCircleIcon, XCircleIcon
-} from '@heroicons/vue/24/outline'
+  Connection, Plus, VideoPlay, Edit, Delete, Check
+} from '@element-plus/icons-vue'
 import { taskApi, nodeFlowApi } from '../utils/api.js'
 
 const flows = ref([])
@@ -313,10 +203,10 @@ const editingFlow = ref({ id: null, name: '', nodes: [], edges: [] })
 const executing = ref(false)
 const executionResult = ref(null)
 const edgeMode = ref(false)
-const draggedTask = ref(null)
 const draggedNode = ref(null)
 const dragOffset = ref({ x: 0, y: 0 })
 const edgeStartNode = ref(null)
+const canvasRef = ref(null)
 
 async function fetchFlows() {
   try {
@@ -364,11 +254,6 @@ function openFlow(flow) {
   }
 }
 
-function closeEditor() {
-  showEditor.value = false
-  editingFlow.value = { id: null, name: '', nodes: [], edges: [] }
-}
-
 async function saveFlow() {
   try {
     const payload = {
@@ -380,14 +265,16 @@ async function saveFlow() {
     }
     if (editingFlow.value.id) {
       await nodeFlowApi.update(editingFlow.value.id, payload)
+      ElMessage.success('流程已保存')
     } else {
       const res = await nodeFlowApi.create(payload)
       editingFlow.value.id = res.data.id
+      ElMessage.success('流程已创建')
     }
     await fetchFlows()
-    closeEditor()
+    showEditor.value = false
   } catch (e) {
-    alert('保存失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
   }
 }
 
@@ -398,42 +285,41 @@ async function executeFlow(flow) {
     const res = await nodeFlowApi.execute(flow.id)
     executionResult.value = {
       success: res.data.success,
-      message: res.data.success ? '流程执行已触发' : '流程执行失败',
-      results: res.data.results
+      message: res.data.success ? '流程执行已触发' : '流程执行失败'
     }
+    ElMessage.success('流程执行已触发')
   } catch (e) {
     executionResult.value = {
       success: false,
       message: '执行失败: ' + (e.response?.data?.detail || e.message)
     }
+    ElMessage.error('执行失败')
   } finally {
     executing.value = false
-    setTimeout(() => { executionResult.value = null }, 5000)
   }
 }
 
 async function executeCurrentFlow() {
   if (!editingFlow.value.id) {
-    // Save first then execute
     await saveFlow()
   }
   await executeFlow(editingFlow.value)
 }
 
-function editFlowName(flow) {
-  const newName = prompt('输入新名称:', flow.name)
-  if (newName && newName !== flow.name) {
-    nodeFlowApi.update(flow.id, { name: newName }).then(fetchFlows)
-  }
-}
-
 async function deleteFlow(flow) {
-  if (!confirm(`确定删除流程 "${flow.name}" 吗？`)) return
   try {
+    await ElMessageBox.confirm(`确定删除流程 "${flow.name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await nodeFlowApi.delete(flow.id)
     await fetchFlows()
+    ElMessage.success('流程已删除')
   } catch (e) {
-    console.error(e)
+    if (e !== 'cancel') {
+      console.error(e)
+    }
   }
 }
 
@@ -490,18 +376,11 @@ function getEdgePath(edge) {
   return `M ${sx} ${sy} C ${sx + 50} ${sy}, ${tx - 50} ${ty}, ${tx} ${ty}`
 }
 
-function onCanvasMouseDown(e) {
-  if (edgeMode.value && edgeStartNode.value) {
-    edgeStartNode.value = null
-  }
-}
-
 function onNodeMouseDown(e, node) {
   if (edgeMode.value) {
     if (!edgeStartNode.value) {
       edgeStartNode.value = node
     } else if (edgeStartNode.value.id !== node.id) {
-      // Create edge
       const newId = Date.now()
       editingFlow.value.edges.push({
         id: newId,
@@ -535,15 +414,9 @@ function onNodeMouseUp() {
   document.removeEventListener('mouseup', onNodeMouseUp)
 }
 
-function onTaskDragStart(e, task) {
-  draggedTask.value = task
-}
-
 function clearAll() {
-  if (confirm('确定清空所有节点和连接吗？')) {
-    editingFlow.value.nodes = []
-    editingFlow.value.edges = []
-  }
+  editingFlow.value.nodes = []
+  editingFlow.value.edges = []
 }
 
 function formatDate(dateStr) {
@@ -556,3 +429,193 @@ onMounted(() => {
   fetchTasks()
 })
 </script>
+
+<style scoped>
+.flow-card {
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flow-card:hover {
+  transform: translateY(-2px);
+}
+
+.flow-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.flow-header .flex-1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty-card {
+  text-align: center;
+  padding: 48px;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.flow-name-input {
+  width: 300px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.editor-container {
+  display: flex;
+  height: 60vh;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.canvas-area {
+  flex: 1;
+  position: relative;
+  background-color: var(--bg-tertiary);
+  overflow: auto;
+}
+
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.5;
+}
+
+.flow-node {
+  position: absolute;
+  min-width: 160px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: move;
+  box-shadow: var(--shadow-soft);
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.node-label {
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.node-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.node-task {
+  font-size: 11px;
+  padding: 2px 8px;
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-radius: 4px;
+}
+
+.edges-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+
+.editor-sidebar {
+  width: 240px;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.sidebar-section {
+  margin-bottom: 16px;
+}
+
+.sidebar-section.flex-1 {
+  flex: 1;
+  overflow: auto;
+}
+
+.sidebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.task-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.task-name {
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>

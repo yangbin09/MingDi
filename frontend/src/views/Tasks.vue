@@ -1,738 +1,442 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header Actions -->
+  <div class="tasks-page space-y-6">
+    <!-- Page Header -->
     <div class="flex justify-between items-center">
       <div class="flex items-center gap-3">
         <div class="h-1 w-8 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }"></div>
         <span class="text-sm" style="color: var(--text-muted);">共 <span style="color: var(--text-main); font-weight: 500;">{{ tasks.length }}</span> 个任务</span>
       </div>
-      <div class="flex items-center gap-2">
-        <button
-          @click="openCreateDrawer"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200"
-          :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-          @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')"
-          @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
-        >
-          <PlusIcon class="w-5 h-5" />
-          新建任务
-        </button>
-      </div>
+      <el-button type="primary" @click="openCreateDrawer">
+        <el-icon><Plus /></el-icon>
+        新建任务
+      </el-button>
     </div>
 
     <!-- Tasks Table -->
-    <div class="card rounded-xl overflow-hidden theme-transition">
-      <div v-if="tasks.length === 0" class="text-center py-20">
-        <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
-          <InboxIcon class="w-10 h-10" style="color: var(--text-muted); opacity: 0.5;" />
-        </div>
-        <p class="text-lg" style="color: var(--text-muted);">暂无任务</p>
-        <p class="text-sm mt-1" style="color: var(--text-disabled);">点击右上角按钮创建第一个任务</p>
-      </div>
+    <el-card class="tasks-card" shadow="never">
+      <el-empty v-if="tasks.length === 0" description="暂无任务，点击右上角按钮创建第一个任务" />
 
-      <table v-else class="w-full">
-        <thead :style="{ backgroundColor: 'var(--bg-tertiary)' }">
-          <tr>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-12" style="color: var(--text-muted);">
-              <span class="relative flex h-3 w-3 justify-center">
-                <span v-if="runningCount > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :style="{ backgroundColor: 'var(--color-primary)' }"></span>
-              </span>
-            </th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">任务</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">依赖</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-36" style="color: var(--text-muted);">定时</th>
-            <th class="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider w-24" style="color: var(--text-muted);">启用</th>
-            <th class="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider w-48" style="color: var(--text-muted);">操作</th>
-          </tr>
-        </thead>
-        <tbody style="borderTop: '1px solid var(--border-subtle)'">
-          <tr
-            v-for="task in tasks"
-            :key="task.id"
-            class="theme-transition"
-            :style="{
-              backgroundColor: task.status === 'running' ? 'var(--color-primary-subtle)' : 'transparent',
-              borderBottom: '1px solid var(--border-subtle)'
-            }"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = task.status === 'running' ? 'var(--color-primary-subtle)' : 'transparent')"
-          >
-            <!-- Status -->
-            <td class="px-4 py-4">
-              <span class="relative flex h-3 w-3">
-                <span
-                  v-if="task.status === 'running'"
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                  :style="{ backgroundColor: 'var(--color-primary)' }"
-                ></span>
-                <span
-                  class="relative inline-flex rounded-full h-3 w-3"
-                  :style="{
-                    backgroundColor:
-                      task.status === 'running' || task.status === 'success' ? 'var(--color-primary)' :
-                      task.status === 'failed' ? 'var(--color-danger)' :
-                      task.status === 'timeout' ? 'var(--color-warning)' :
-                      'var(--text-muted)'
-                  }"
-                ></span>
-              </span>
-            </td>
-
-            <!-- Task Info -->
-            <td class="px-4 py-4">
-              <div class="font-medium" style="color: var(--text-main);">{{ task.name }}</div>
-              <div class="text-xs mt-0.5 flex items-center gap-2" style="color: var(--text-muted);">
-                <span class="font-mono">{{ task.script_path }}</span>
-                <span
-                  v-if="task.interpreter_path"
-                  class="text-xs px-1.5 py-0.5 rounded"
-                  :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--color-purple)' }"
-                >
-                  {{ task.interpreter_path.split('/').pop().split('\\').pop() }}
-                </span>
-                <span
-                  v-if="task.webhook_enabled"
-                  class="text-xs px-1.5 py-0.5 rounded flex items-center gap-1"
-                  :style="{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-blue)' }"
-                  title="Webhook已启用"
-                >
-                  <WebhookIcon class="w-3 h-3" />
-                  Webhook
-                </span>
-                <span
-                  v-if="task.use_docker"
-                  class="text-xs px-1.5 py-0.5 rounded flex items-center gap-1"
-                  :style="{ backgroundColor: 'rgba(14, 165, 233, 0.15)', color: 'var(--color-cyan)' }"
-                  title="Docker沙箱"
-                >
-                  <CubeIcon class="w-3 h-3" />
-                  Docker
-                </span>
-              </div>
-              <div v-if="task.description" class="text-xs mt-1 truncate max-w-md" style="color: var(--text-disabled);">
-                {{ task.description }}
-              </div>
-            </td>
-
-            <!-- Dependency -->
-            <td class="px-4 py-4">
+      <el-table
+        v-else
+        :data="tasks"
+        stripe
+        style="width: 100%"
+        :header-cell-style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
+        :row-style="{ borderBottom: '1px solid var(--border-subtle)' }"
+      >
+        <el-table-column label="状态" width="60" align="center">
+          <template #default="{ row }">
+            <span class="relative flex h-3 w-3 justify-center">
+              <span v-if="row.status === 'running'" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :style="{ backgroundColor: 'var(--color-primary)' }"></span>
               <span
-                v-if="task.depends_on"
-                class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-                :style="{ backgroundColor: 'var(--color-warning-subtle)', color: 'var(--color-warning)' }"
-              >
-                <ArrowRightIcon class="w-3 h-3" />
-                {{ getTaskName(task.depends_on) }}
-              </span>
-              <span v-else class="text-sm" style="color: var(--text-disabled);">-</span>
-            </td>
+                class="relative inline-flex rounded-full h-3 w-3"
+                :style="{
+                  backgroundColor:
+                    row.status === 'running' || row.status === 'success' ? 'var(--color-primary)' :
+                    row.status === 'failed' ? 'var(--color-danger)' :
+                    row.status === 'timeout' ? 'var(--color-warning)' :
+                    'var(--text-muted)'
+                }"
+              ></span>
+            </span>
+          </template>
+        </el-table-column>
 
-            <!-- Cron -->
-            <td class="px-4 py-4">
-              <code
-                class="text-xs px-2.5 py-1.5 rounded-lg font-mono"
-                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-primary)', border: '1px solid var(--border-subtle)' }"
-              >{{ task.cron_expr || '-' }}</code>
-            </td>
-
-            <!-- Toggle -->
-            <td class="px-4 py-4">
-              <button
-                @click="toggleTask(task)"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300"
-                :style="task.is_active
-                  ? { backgroundColor: 'var(--color-success-subtle)', border: '1px solid var(--color-success)' }
-                  : { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }"
-              >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full transition-all duration-300"
-                  :style="{
-                    backgroundColor: task.is_active ? 'var(--color-success)' : 'var(--text-muted)',
-                    transform: task.is_active ? 'translateX(22px)' : 'translateX(2px)'
-                  }"
-                />
-              </button>
-            </td>
-
-            <!-- Actions -->
-            <td class="px-4 py-4">
-              <div class="flex items-center justify-end gap-1">
-                <button
-                  @click="runTask(task)"
-                  :disabled="task.status === 'running'"
-                  class="p-2 rounded-lg transition-colors"
-                  :style="{ color: 'var(--text-muted)' }"
-                  :class="{ 'opacity-40': task.status === 'running' }"
-                  title="立即运行"
-                  @mouseenter="($event.currentTarget.style.color = 'var(--color-success)', $event.currentTarget.style.backgroundColor = 'var(--color-success-subtle)')"
-                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
-                >
-                  <PlayIcon class="w-4 h-4" />
-                </button>
-                <button
-                  @click="goToLogs(task)"
-                  class="p-2 rounded-lg transition-colors"
-                  :style="{ color: 'var(--text-muted)' }"
-                  title="查看日志"
-                  @mouseenter="($event.currentTarget.style.color = 'var(--color-primary)', $event.currentTarget.style.backgroundColor = 'var(--color-primary-subtle)')"
-                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
-                >
-                  <CommandLineIcon class="w-4 h-4" />
-                </button>
-                <button
-                  @click="openEditDrawer(task)"
-                  class="p-2 rounded-lg transition-colors"
-                  :style="{ color: 'var(--text-muted)' }"
-                  title="编辑"
-                  @mouseenter="($event.currentTarget.style.color = 'var(--color-warning)', $event.currentTarget.style.backgroundColor = 'var(--color-warning-subtle)')"
-                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
-                >
-                  <PencilIcon class="w-4 h-4" />
-                </button>
-                <button
-                  @click="deleteTask(task)"
-                  class="p-2 rounded-lg transition-colors"
-                  :style="{ color: 'var(--text-muted)' }"
-                  title="删除"
-                  @mouseenter="($event.currentTarget.style.color = 'var(--color-danger)', $event.currentTarget.style.backgroundColor = 'var(--color-danger-subtle)')"
-                  @mouseleave="($event.currentTarget.style.color = 'var(--text-muted)', $event.currentTarget.style.backgroundColor = 'transparent')"
-                >
-                  <TrashIcon class="w-4 h-4" />
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Task Drawer -->
-  <div v-if="showDrawer" class="fixed inset-0 z-50 overflow-hidden">
-    <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }" @click="closeDrawer"></div>
-    <div
-      class="absolute right-0 top-0 h-full w-full max-w-xl theme-transition overflow-y-auto"
-      :style="{ backgroundColor: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-subtle)' }"
-    >
-      <div class="flex items-center justify-between p-5" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
-        <div class="flex items-center gap-3">
-          <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-success))' }"></div>
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">{{ isEditing ? '编辑任务' : '新建任务' }}</h2>
-        </div>
-        <button
-          @click="closeDrawer"
-          class="p-2 rounded-lg transition-colors"
-          :style="{ color: 'var(--text-muted)' }"
-          @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-          @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-        >
-          <XMarkIcon class="w-5 h-5" />
-        </button>
-      </div>
-
-      <div class="p-5 overflow-y-auto" :style="{ height: 'calc(100vh - 73px)' }">
-        <form @submit.prevent="submitForm" class="space-y-6">
-          <!-- AI: Text-to-Script Generation -->
-          <div v-if="!isEditing" class="rounded-lg p-4" :style="{ backgroundColor: 'var(--color-primary-subtle)', border: '1px solid var(--color-primary)' }">
-            <div class="flex items-center gap-2 mb-3">
-              <SparklesIcon class="w-5 h-5" :style="{ color: 'var(--color-primary)' }" />
-              <span class="font-medium" style="color: var(--color-primary);">AI 智能生成脚本</span>
+        <el-table-column label="任务" min-width="280">
+          <template #default="{ row }">
+            <div class="font-medium" style="color: var(--text-main);">{{ row.name }}</div>
+            <div class="text-xs mt-0.5 flex items-center gap-2" style="color: var(--text-muted);">
+              <code class="font-mono">{{ row.script_path }}</code>
+              <el-tag v-if="row.interpreter_path" size="small" type="info">{{ row.interpreter_path.split('/').pop().split('\\').pop() }}</el-tag>
+              <el-tag v-if="row.webhook_enabled" size="small" type="primary">
+                <el-icon><Link /></el-icon>
+                Webhook
+              </el-tag>
+              <el-tag v-if="row.use_docker" size="small" type="success">
+                <el-icon><Box /></el-icon>
+                Docker
+              </el-tag>
             </div>
-            <div class="flex gap-2">
-              <input
+            <div v-if="row.description" class="text-xs mt-1 truncate max-w-md" style="color: var(--text-disabled);">
+              {{ row.description }}
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="依赖" width="150">
+          <template #default="{ row }">
+            <el-tag v-if="row.depends_on" size="small" type="warning">
+              <el-icon><ArrowRight /></el-icon>
+              {{ getTaskName(row.depends_on) }}
+            </el-tag>
+            <span v-else style="color: var(--text-disabled);">-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="定时" width="140">
+          <template #default="{ row }">
+            <code
+              class="text-xs px-2.5 py-1.5 rounded-lg font-mono"
+              :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-primary)', border: '1px solid var(--border-subtle)' }"
+            >{{ row.cron_expr || '-' }}</code>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="启用" width="80" align="center">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.is_active"
+              @change="toggleTask(row)"
+              active-color="var(--color-success)"
+              inactive-color="var(--bg-tertiary)"
+            />
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="180" align="right">
+          <template #default="{ row }">
+            <el-button-group>
+              <el-tooltip content="立即运行" placement="top">
+                <el-button :icon="VideoPlay" @click="runTask(row)" :disabled="row.status === 'running'" size="small" type="success" plain />
+              </el-tooltip>
+              <el-tooltip content="查看日志" placement="top">
+                <el-button :icon="Document" @click="goToLogs(row)" size="small" type="primary" plain />
+              </el-tooltip>
+              <el-tooltip content="编辑" placement="top">
+                <el-button :icon="Edit" @click="openEditDrawer(row)" size="small" type="warning" plain />
+              </el-tooltip>
+              <el-tooltip content="删除" placement="top">
+                <el-button :icon="Delete" @click="deleteTask(row)" size="small" type="danger" plain />
+              </el-tooltip>
+            </el-button-group>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <!-- Task Drawer -->
+    <el-drawer
+      v-model="showDrawer"
+      :title="isEditing ? '编辑任务' : '新建任务'"
+      size="500px"
+      :before-close="closeDrawer"
+      class="task-drawer"
+    >
+      <el-form
+        ref="taskFormRef"
+        :model="form"
+        :rules="formRules"
+        label-position="top"
+        class="task-form"
+      >
+        <!-- AI: Text-to-Script Generation -->
+        <el-alert
+          v-if="!isEditing"
+          title="AI 智能生成脚本"
+          type="info"
+          :closable="false"
+          show-icon
+          class="mb-4"
+        >
+          <template #default>
+            <div class="flex gap-2 mt-2">
+              <el-input
                 v-model="aiDescription"
-                type="text"
-                class="input flex-1"
                 placeholder="用自然语言描述你想要实现的脚本功能..."
               />
-              <button
-                type="button"
+              <el-button
+                type="primary"
                 @click="generateScriptWithAI"
-                :disabled="aiGenerating || !aiDescription.trim()"
-                class="px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
-                :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-                :class="{ 'opacity-50': aiGenerating }"
+                :loading="aiGenerating"
+                :disabled="!aiDescription.trim()"
               >
-                <SparklesIcon v-if="!aiGenerating" class="w-4 h-4" />
-                <span v-if="aiGenerating" class="animate-spin">⟳</span>
+                <el-icon v-if="!aiGenerating"><MagicStick /></el-icon>
                 {{ aiGenerating ? '生成中...' : '生成' }}
-              </button>
+              </el-button>
             </div>
-          </div>
+          </template>
+        </el-alert>
 
-          <!-- Task Name -->
-          <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">任务名称</label>
-            <input
-              v-model="form.name"
-              type="text"
-              required
-              class="input"
-              placeholder="输入任务名称"
+        <el-form-item label="任务名称" prop="name">
+          <el-input v-model="form.name" placeholder="输入任务名称" />
+        </el-form-item>
+
+        <el-form-item label="脚本来源">
+          <el-radio-group v-model="scriptMode" class="mb-2">
+            <el-radio label="path">服务器路径</el-radio>
+            <el-radio label="editor">在线编辑</el-radio>
+          </el-radio-group>
+
+          <div v-if="scriptMode === 'path'">
+            <el-input
+              v-model="form.script_path"
+              placeholder="./scripts/my_script.py"
+              :rules="[{ required: true, message: '请输入脚本路径', trigger: 'blur' }]"
             />
           </div>
-
-          <!-- Script Mode -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium" style="color: var(--text-muted);">脚本来源</label>
-              <!-- AI: Code Review Button -->
-              <button
-                v-if="scriptMode === 'editor' && form.script_content"
-                type="button"
-                @click="reviewCodeWithAI"
-                :disabled="aiReviewing"
-                class="flex items-center gap-1 text-xs px-2 py-1 rounded transition-all"
-                :style="{ color: 'var(--color-purple)' }"
-                title="AI代码审查"
-              >
-                <SparklesIcon class="w-3 h-3" :class="{ 'animate-spin': aiReviewing }" />
-                AI审查
-              </button>
+          <div v-else class="editor-wrapper">
+            <div class="editor-header">
+              <span>Python Editor</span>
+              <el-tag v-if="aiCapabilities.docker_available" size="small" :type="form.use_docker ? 'success' : 'info'">
+                <el-icon><Box /></el-icon>
+                {{ form.use_docker ? '沙箱模式' : '普通模式' }}
+              </el-tag>
             </div>
-            <div class="flex gap-4 mb-3">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" v-model="scriptMode" value="path" class="accent-" :style="{ accentColor: 'var(--color-primary)' }" />
-                <span class="text-sm" style="color: var(--text-main);">服务器路径</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" v-model="scriptMode" value="editor" class="" :style="{ accentColor: 'var(--color-primary)' }" />
-                <span class="text-sm" style="color: var(--text-main);">在线编辑</span>
-              </label>
-            </div>
-
-            <div v-if="scriptMode === 'path'">
-              <input
-                v-model="form.script_path"
-                type="text"
-                required
-                class="input font-mono text-sm"
-                placeholder="./scripts/my_script.py"
-              />
-            </div>
-            <div v-else class="rounded-lg overflow-hidden" :style="{ border: '1px solid var(--border-subtle)' }">
-              <div
-                class="px-3 py-2 text-xs flex items-center justify-between"
-                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }"
-              >
-                <div class="flex items-center gap-2">
-                  <span>Python Editor</span>
-                  <span style="color: var(--color-primary);">Python 3</span>
-                </div>
-                <button
-                  v-if="aiCapabilities.docker_available"
-                  type="button"
-                  @click="form.use_docker = !form.use_docker"
-                  class="flex items-center gap-1 text-xs px-2 py-0.5 rounded transition-all"
-                  :style="form.use_docker
-                    ? { backgroundColor: 'rgba(14, 165, 233, 0.15)', color: 'var(--color-cyan)' }
-                    : { color: 'var(--text-disabled)' }"
-                  title="Docker沙箱执行"
-                >
-                  <CubeIcon class="w-3 h-3" />
-                  {{ form.use_docker ? '沙箱模式' : '普通模式' }}
-                </button>
-              </div>
-              <vue-monaco-editor
-                v-model:value="form.script_content"
-                language="python"
-                theme="vs-dark"
-                :options="{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 4,
-                  wordWrap: 'on',
-                  padding: { top: 8 }
-                }"
-                height="200px"
-              />
-            </div>
+            <vue-monaco-editor
+              v-model:value="form.script_content"
+              language="python"
+              theme="vs-dark"
+              :options="{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 4,
+                wordWrap: 'on',
+                padding: { top: 8 }
+              }"
+              height="200px"
+            />
           </div>
+        </el-form-item>
 
-          <!-- AI Review Result Panel -->
-          <div v-if="aiReviewResult" class="rounded-lg p-4" :style="{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }">
-            <div class="flex items-center gap-2 mb-2">
-              <SparklesIcon class="w-4 h-4" style="color: var(--color-purple);" />
-              <span class="font-medium text-sm" style="color: var(--text-main);">AI 代码审查结果</span>
-              <button @click="aiReviewResult = null" class="ml-auto p-1 rounded hover:bg-bg-hover">
-                <XMarkIcon class="w-3 h-3" style="color: var(--text-muted);" />
-              </button>
-            </div>
+        <!-- AI Review Result -->
+        <el-alert
+          v-if="aiReviewResult"
+          :title="'AI 代码审查结果'"
+          type="success"
+          :closable="true"
+          @close="aiReviewResult = null"
+          class="mb-4"
+        >
+          <template #default>
             <pre class="text-xs whitespace-pre-wrap" style="color: var(--text-muted);">{{ aiReviewResult }}</pre>
-          </div>
+          </template>
+        </el-alert>
 
-          <!-- Interpreter Path -->
-          <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">
-              Python 解释器 <span class="text-xs" style="color: var(--text-disabled);">(可选)</span>
-            </label>
-            <div class="relative">
-              <input
-                v-model="form.interpreter_path"
-                type="text"
-                class="input font-mono text-sm pr-12"
-                placeholder="/usr/bin/python3"
+        <el-form-item label="Python 解释器 (可选)">
+          <el-input
+            v-model="form.interpreter_path"
+            placeholder="/usr/bin/python3"
+          />
+        </el-form-item>
+
+        <el-form-item label="定时执行">
+          <!-- NLP to Cron -->
+          <el-card shadow="never" class="mb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <el-icon><MagicStick /></el-icon>
+              <span class="text-xs" style="color: var(--text-muted);">自然语言设置定时</span>
+            </div>
+            <div class="flex gap-2">
+              <el-input
+                v-model="nlpCronInput"
+                placeholder="例如：每个工作日下午5点半"
+                @keyup.enter="convertNLPCron"
               />
-              <span v-if="form.interpreter_path" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded" :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--color-purple)' }">venv</span>
-            </div>
-            <p class="text-xs mt-1" style="color: var(--text-disabled);">指定任务执行的 Python 解释器路径</p>
-          </div>
-
-          <!-- Cron Expression with NLP support -->
-          <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">定时执行</label>
-
-            <!-- NLP to Cron Input -->
-            <div class="mb-3 p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }">
-              <div class="flex items-center gap-2 mb-2">
-                <SparklesIcon class="w-4 h-4" :style="{ color: 'var(--color-primary)' }" />
-                <span class="text-xs" style="color: var(--text-muted);">自然语言设置定时</span>
-              </div>
-              <div class="flex gap-2">
-                <input
-                  v-model="nlpCronInput"
-                  type="text"
-                  class="input flex-1 text-sm"
-                  placeholder="例如：每个工作日下午5点半"
-                  @keyup.enter="convertNLPCron"
-                />
-                <button
-                  type="button"
-                  @click="convertNLPCron"
-                  :disabled="aiCronConverting || !nlpCronInput.trim()"
-                  class="px-3 py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1"
-                  :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-                  :class="{ 'opacity-50': aiCronConverting }"
-                >
-                  <SparklesIcon v-if="!aiCronConverting" class="w-3 h-3" />
-                  <span v-if="aiCronConverting" class="animate-spin">⟳</span>
-                  {{ aiCronConverting ? '转换中' : '转Cron' }}
-                </button>
-              </div>
-              <div v-if="nlpCronResult" class="mt-2 text-xs" style="color: var(--color-success);">
-                ✓ {{ nlpCronResult }}
-              </div>
-            </div>
-
-            <!-- Cron Presets -->
-            <div class="grid grid-cols-4 gap-2 mb-3">
-              <button
-                type="button"
-                v-for="preset in cronPresets"
-                :key="preset.value"
-                @click="form.cron_expr = preset.value"
-                class="px-3 py-2 text-xs rounded-lg border transition-all duration-200"
-                :style="form.cron_expr === preset.value
-                  ? { borderColor: 'var(--color-primary)', backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }
-                  : { borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }"
+              <el-button
+                @click="convertNLPCron"
+                :loading="aiCronConverting"
+                :disabled="!nlpCronInput.trim()"
+                type="primary"
               >
-                {{ preset.label }}
-              </button>
+                {{ aiCronConverting ? '转换中' : '转Cron' }}
+              </el-button>
             </div>
-            <input
-              v-model="form.cron_expr"
-              type="text"
-              class="input font-mono"
-              placeholder="* * * * *"
+            <div v-if="nlpCronResult" class="mt-2 text-xs" style="color: var(--color-success);">
+              ✓ {{ nlpCronResult }}
+            </div>
+          </el-card>
+
+          <!-- Cron Presets -->
+          <div class="flex gap-2 mb-3">
+            <el-tag
+              v-for="preset in cronPresets"
+              :key="preset.value"
+              :type="form.cron_expr === preset.value ? 'primary' : 'info'"
+              class="cursor-pointer"
+              @click="form.cron_expr = preset.value"
+            >
+              {{ preset.label }}
+            </el-tag>
+          </div>
+          <el-input v-model="form.cron_expr" placeholder="* * * * *" />
+          <p class="text-xs mt-1" v-if="form.cron_expr" style="color: var(--text-muted);">{{ cronHumanText(form.cron_expr) }}</p>
+        </el-form-item>
+
+        <el-form-item label="前置任务依赖 (可选)">
+          <el-select v-model="form.depends_on" placeholder="选择前置任务" clearable>
+            <el-option
+              v-for="t in availableDependencies"
+              :key="t.id"
+              :label="t.name"
+              :value="t.id"
             />
-            <p class="text-xs mt-2" v-if="form.cron_expr" style="color: var(--text-muted);">{{ cronHumanText(form.cron_expr) }}</p>
-          </div>
+          </el-select>
+        </el-form-item>
 
-          <!-- Task Dependency -->
-          <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">
-              前置任务依赖 <span class="text-xs" style="color: var(--text-disabled);">(可选)</span>
-            </label>
-            <select v-model="form.depends_on" class="input">
-              <option :value="null">无依赖</option>
-              <option v-for="t in availableDependencies" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
-            <p class="text-xs mt-1" style="color: var(--text-disabled);">前置任务成功执行后，自动触发此任务</p>
+        <el-form-item label="Webhook 触发">
+          <div class="flex items-center gap-3">
+            <el-switch
+              v-model="form.webhook_enabled"
+              active-text="启用 Webhook URL 触发"
+            />
           </div>
-
-          <!-- Webhook Trigger Setting -->
-          <div>
-            <div class="flex items-center gap-3 mb-2">
-              <label class="text-sm font-medium" style="color: var(--text-muted);">Webhook 触发</label>
-              <span class="text-xs px-2 py-0.5 rounded" :style="{ backgroundColor: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-blue)' }">事件驱动</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                @click="form.webhook_enabled = !form.webhook_enabled"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300"
-                :style="form.webhook_enabled
-                  ? { backgroundColor: 'rgba(59, 130, 246, 0.2)', border: '1px solid var(--color-blue)' }
-                  : { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }"
-              >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full transition-all duration-300"
-                  :style="{
-                    backgroundColor: form.webhook_enabled ? 'var(--color-blue)' : 'var(--text-muted)',
-                    transform: form.webhook_enabled ? 'translateX(22px)' : 'translateX(2px)'
-                  }"
-                />
-              </button>
-              <span class="text-sm" style="color: var(--text-muted);">
-                {{ form.webhook_enabled ? '启用 Webhook URL 触发' : '禁用' }}
-              </span>
-            </div>
-            <div v-if="form.webhook_enabled && (isEditing || currentWebhookToken)" class="mt-2 text-xs">
-              <div class="flex items-center gap-2">
-                <code class="px-2 py-1 rounded" :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-blue)' }">
-                  /webhook/{{ currentWebhookToken }}
-                </code>
-                <button @click="copyWebhookUrl" class="p-1 rounded hover:bg-bg-hover" title="复制">
-                  <ClipboardDocumentIcon class="w-3 h-3" style="color: var(--text-muted);" />
-                </button>
-              </div>
-            </div>
+          <div v-if="form.webhook_enabled && (isEditing || currentWebhookToken)" class="mt-2">
+            <code class="px-2 py-1 rounded text-xs" :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-primary)' }">
+              /webhook/{{ currentWebhookToken }}
+            </code>
+            <el-button size="small" @click="copyWebhookUrl" class="ml-2">
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
           </div>
+        </el-form-item>
 
-          <!-- Timeout -->
-          <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">超时时间 (秒)</label>
-            <input v-model.number="form.timeout" type="number" min="0" class="input" placeholder="300" />
-          </div>
+        <el-form-item label="超时时间 (秒)">
+          <el-input-number v-model="form.timeout" :min="0" placeholder="300" />
+        </el-form-item>
 
-          <!-- Auto Doc Generation -->
-          <div v-if="!isEditing && form.script_content" class="rounded-lg p-4" :style="{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <SparklesIcon class="w-4 h-4" :style="{ color: 'var(--color-success)' }" />
-                <span class="text-sm font-medium" style="color: var(--text-main);">AI 自动生成文档</span>
-              </div>
-              <button
-                type="button"
-                @click="generateDocWithAI"
-                :disabled="aiDocGenerating"
-                class="flex items-center gap-1 text-xs px-2 py-1 rounded transition-all"
-                :style="{ color: 'var(--color-success)' }"
-              >
-                <SparklesIcon class="w-3 h-3" :class="{ 'animate-spin': aiDocGenerating }" />
+        <!-- Auto Doc Generation -->
+        <el-alert
+          v-if="!isEditing && form.script_content"
+          :title="'AI 自动生成文档'"
+          type="success"
+          :closable="false"
+          show-icon
+          class="mb-4"
+        >
+          <template #default>
+            <div class="flex justify-between items-center">
+              <span v-if="aiGeneratedDoc" class="text-xs">{{ aiGeneratedDoc }}</span>
+              <span v-else class="text-xs" style="color: var(--text-disabled);">保存时将自动生成文档描述</span>
+              <el-button size="small" @click="generateDocWithAI" :loading="aiDocGenerating">
                 {{ aiDocGenerating ? '生成中...' : '重新生成' }}
-              </button>
+              </el-button>
             </div>
-            <p v-if="aiGeneratedDoc" class="text-xs whitespace-pre-wrap" style="color: var(--text-muted);">{{ aiGeneratedDoc }}</p>
-            <p v-else class="text-xs" style="color: var(--text-disabled);">保存时将自动生成文档描述</p>
-          </div>
+          </template>
+        </el-alert>
 
-          <!-- Submit -->
-          <div class="flex gap-3 pt-4" :style="{ borderTop: '1px solid var(--border-subtle)' }">
-            <button
-              type="button"
-              @click="closeDrawer"
-              class="flex-1 px-4 py-2.5 rounded-lg transition-all"
-              :style="{ border: '1px solid var(--border-subtle)', color: 'var(--text-main)', backgroundColor: 'transparent' }"
-              @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-              @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              class="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all"
-              :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
-              @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')"
-              @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
-            >
-              {{ isEditing ? '保存' : '创建' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        <el-form-item class="form-actions">
+          <el-button @click="closeDrawer">取消</el-button>
+          <el-button type="primary" @click="submitForm" :loading="formSubmitting">
+            {{ isEditing ? '保存' : '创建' }}
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-drawer>
 
-  <!-- Log Drawer -->
-  <div v-if="showLogDrawer" class="fixed inset-0 z-50 overflow-hidden">
-    <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }" @click="closeLogDrawer"></div>
-    <div
-      class="absolute right-0 top-0 h-full w-full max-w-3xl theme-transition"
-      :style="{ backgroundColor: 'var(--bg-primary)', borderLeft: '1px solid var(--border-subtle)' }"
+    <!-- Log Drawer -->
+    <el-drawer
+      v-model="showLogDrawer"
+      :title="'日志查看 - ' + (currentTask?.name || '')"
+      size="700px"
+      :before-close="closeLogDrawer"
     >
-      <!-- Terminal Header -->
-      <div class="flex items-center justify-between px-5 py-3" :style="{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }">
-        <div class="flex items-center gap-3">
-          <div class="flex gap-1.5">
-            <div class="w-3 h-3 rounded-full" style="background-color: #E43F3F;"></div>
-            <div class="w-3 h-3 rounded-full" style="background-color: #E5C07B;"></div>
-            <div class="w-3 h-3 rounded-full" style="background-color: #98C379;"></div>
-          </div>
-          <div>
-            <span class="text-sm font-medium" style="color: var(--text-main);">{{ currentTask?.name }}</span>
-            <span class="text-xs ml-2" style="color: var(--text-muted);">bash</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <!-- Search Filter -->
-          <div class="flex items-center gap-2 mr-2">
-            <div class="relative">
-              <input
-                v-model="logSearch"
-                type="text"
-                placeholder="搜索..."
-                class="text-xs px-3 py-1.5 pr-8 rounded-lg font-mono"
-                :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }"
-              />
-              <MagnifyingGlassIcon class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2" style="color: var(--text-muted);" />
-            </div>
-            <input
-              v-model="logDateFilter"
-              type="date"
-              class="text-xs px-2 py-1.5 rounded-lg"
-              :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }"
-            />
-          </div>
-          <!-- AI: Log Summarization Button -->
-          <button
-            v-if="currentLog && currentLog.output && currentLog.output.length > 500"
-            @click="summarizeLogWithAI"
-            :disabled="aiLogSummarizing"
-            class="p-1.5 rounded-lg transition-colors flex items-center gap-1"
-            :style="{ color: 'var(--color-purple)' }"
-            title="AI日志摘要"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.15)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-          >
-            <SparklesIcon class="w-4 h-4" :class="{ 'animate-spin': aiLogSummarizing }" />
-            <span class="text-xs">摘要</span>
-          </button>
-          <button
-            @click="downloadLog"
-            class="p-1.5 rounded-lg transition-colors"
-            :style="{ color: 'var(--text-muted)' }"
-            title="下载日志"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-          >
-            <ArrowDownTrayIcon class="w-4 h-4" />
-          </button>
-          <button
-            @click="runTask(currentTask)"
-            class="px-3 py-1.5 text-xs rounded-lg font-medium transition-colors"
-            :style="{ backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--color-primary)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = 'var(--color-primary-subtle)')"
-          >
-            ▶ 运行
-          </button>
-          <button
-            @click="refreshLogs"
-            class="p-1.5 rounded-lg transition-colors"
-            :style="{ color: 'var(--text-muted)' }"
-            title="刷新"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-          >
-            <ArrowPathIcon class="w-4 h-4" />
-          </button>
-          <button
-            @click="closeLogDrawer"
-            class="p-1.5 rounded-lg transition-colors"
-            :style="{ color: 'var(--text-muted)' }"
-            @mouseenter="($event.currentTarget.style.backgroundColor = 'var(--bg-hover)')"
-            @mouseleave="($event.currentTarget.style.backgroundColor = 'transparent')"
-          >
-            <XMarkIcon class="w-4 h-4" />
-          </button>
-        </div>
+      <!-- Log Toolbar -->
+      <div class="log-toolbar">
+        <el-input
+          v-model="logSearch"
+          placeholder="搜索..."
+          class="log-search"
+          clearable
+        />
+        <el-date-picker
+          v-model="logDateFilter"
+          type="date"
+          placeholder="选择日期"
+          class="log-date"
+        />
+        <el-button
+          v-if="currentLog && currentLog.output && currentLog.output.length > 500"
+          @click="summarizeLogWithAI"
+          :loading="aiLogSummarizing"
+          type="primary"
+          plain
+        >
+          <el-icon><MagicStick /></el-icon>
+          AI摘要
+        </el-button>
+        <el-button @click="downloadLog">
+          <el-icon><Download /></el-icon>
+        </el-button>
+        <el-button type="primary" @click="runTask(currentTask)">
+          <el-icon><VideoPlay /></el-icon>
+          运行
+        </el-button>
       </div>
 
-      <!-- AI Log Summary Panel -->
-      <div v-if="aiLogSummary" class="px-5 py-3" :style="{ backgroundColor: 'var(--color-primary-subtle)', borderBottom: '1px solid var(--border-subtle)' }">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <SparklesIcon class="w-4 h-4" :style="{ color: 'var(--color-primary)' }" />
-            <span class="text-sm font-medium" style="color: var(--color-primary);">AI 日志摘要</span>
-          </div>
-          <button @click="aiLogSummary = null" class="p-1 rounded hover:bg-bg-hover">
-            <XMarkIcon class="w-3 h-3" style="color: var(--text-muted);" />
-          </button>
-        </div>
+      <!-- AI Log Summary -->
+      <el-alert
+        v-if="aiLogSummary"
+        :title="'AI 日志摘要'"
+        type="success"
+        :closable="true"
+        @close="aiLogSummary = null"
+        class="mb-3"
+      >
         <pre class="text-xs whitespace-pre-wrap" style="color: var(--text-main);">{{ aiLogSummary }}</pre>
-      </div>
+      </el-alert>
 
-      <!-- AI Error Diagnosis Panel -->
-      <div v-if="aiErrorDiagnosis" class="px-5 py-3" :style="{ backgroundColor: 'var(--color-danger-subtle)', borderBottom: '1px solid var(--border-subtle)' }">
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <SparklesIcon class="w-4 h-4" style="color: var(--color-danger);" />
-            <span class="text-sm font-medium" style="color: var(--color-danger);">AI 错误诊断</span>
-          </div>
-          <button @click="aiErrorDiagnosis = null" class="p-1 rounded hover:bg-bg-hover">
-            <XMarkIcon class="w-3 h-3" style="color: var(--text-muted);" />
-          </button>
-        </div>
+      <!-- AI Error Diagnosis -->
+      <el-alert
+        v-if="aiErrorDiagnosis"
+        :title="'AI 错误诊断'"
+        type="error"
+        :closable="true"
+        @close="aiErrorDiagnosis = null"
+        class="mb-3"
+      >
         <pre class="text-xs whitespace-pre-wrap" style="color: var(--text-main);">{{ aiErrorDiagnosis }}</pre>
-      </div>
+      </el-alert>
 
       <!-- Terminal Content -->
-      <div ref="terminalContent" class="overflow-auto p-5" :style="{ height: 'calc(100%-48px)', backgroundColor: 'var(--bg-primary)' }">
-        <div class="space-y-1 font-mono text-sm">
-          <div style="color: var(--text-muted);">
-            <span style="color: var(--color-primary);">pycron</span>:<span style="color: var(--color-success);">~</span>$ python {{ currentTask?.script_path }}
-          </div>
+      <div class="terminal-content">
+        <div class="terminal-prompt" style="color: var(--text-muted);">
+          <span style="color: var(--color-primary);">pycron</span>:<span style="color: var(--color-success);">~</span>$ python {{ currentTask?.script_path }}
+        </div>
 
-          <div v-if="filteredLogs.length === 0" class="py-6" style="color: var(--text-muted);">
-            <p class="text-sm">// 暂无执行记录</p>
-            <p class="text-sm mt-2" style="color: var(--color-success); opacity: 0.7;">// 点击 "运行" 按钮执行任务</p>
-          </div>
+        <el-empty v-if="filteredLogs.length === 0" description="暂无执行记录" />
 
-          <div v-else>
-            <div v-for="(log, idx) in filteredLogs" :key="log.id" class="pb-4 mb-4" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
-              <div class="flex items-center justify-between text-xs mb-2" style="color: var(--text-muted);">
-                <div class="flex items-center gap-3">
-                  <span style="color: var(--color-primary);">[{{ idx + 1 }}]</span>
-                  <span style="color: var(--text-main);">{{ formatTime(log.start_time) }}</span>
-                  <span v-if="log.end_time" style="color: var(--text-disabled);">→ {{ formatTime(log.end_time) }}</span>
-                  <span
-                    class="px-2 py-0.5 rounded text-xs font-medium"
-                    :style="log.exit_code === 0
-                      ? { backgroundColor: 'var(--color-success-subtle)', color: 'var(--color-success)' }
-                      : { backgroundColor: 'var(--color-danger-subtle)', color: 'var(--color-danger)' }"
-                  >
-                    exit {{ log.exit_code }}
-                  </span>
-                </div>
-                <!-- AI Diagnose Button for failed logs -->
-                <button
-                  v-if="log.exit_code !== 0"
-                  @click="diagnoseErrorWithAI(log)"
-                  :disabled="aiDiagnosingLogId === log.id"
-                  class="flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-all"
-                  :style="{ color: 'var(--color-warning)' }"
-                  title="AI错误诊断"
-                >
-                  <SparklesIcon class="w-3 h-3" :class="{ 'animate-spin': aiDiagnosingLogId === log.id }" />
-                  诊断
-                </button>
+        <div v-else class="log-sessions">
+          <div v-for="(log, idx) in filteredLogs" :key="log.id" class="log-session">
+            <div class="log-header">
+              <div class="log-meta">
+                <span style="color: var(--color-primary);">[{{ idx + 1 }}]</span>
+                <span>{{ formatTime(log.start_time) }}</span>
+                <span v-if="log.end_time">→ {{ formatTime(log.end_time) }}</span>
+                <el-tag :type="log.exit_code === 0 ? 'success' : 'danger'" size="small">
+                  exit {{ log.exit_code }}
+                </el-tag>
               </div>
-              <pre class="whitespace-pre-wrap leading-relaxed text-sm" style="color: var(--text-main);" v-html="highlightKeyword(log.output || '// 无输出')"></pre>
+              <el-button
+                v-if="log.exit_code !== 0"
+                size="small"
+                type="warning"
+                @click="diagnoseErrorWithAI(log)"
+                :loading="aiDiagnosingLogId === log.id"
+              >
+                <el-icon><MagicStick /></el-icon>
+                诊断
+              </el-button>
             </div>
-          </div>
-
-          <div class="mt-4" style="color: var(--color-success);">
-            <span class="inline-block w-2 h-4 animate-pulse" :style="{ backgroundColor: 'var(--color-success)' }"></span>
+            <pre class="log-output" v-html="highlightKeyword(log.output || '// 无输出')"></pre>
           </div>
         </div>
+        <div class="terminal-cursor" :style="{ backgroundColor: 'var(--color-success)' }"></div>
       </div>
-    </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import cronParser from 'cron-parser'
 import {
-  PlusIcon, PlayIcon, PencilIcon, TrashIcon, CommandLineIcon,
-  XMarkIcon, ArrowPathIcon, InboxIcon, ArrowDownTrayIcon,
-  ArrowRightIcon, MagnifyingGlassIcon, SparklesIcon,
-  ClipboardDocumentIcon, CubeIcon
-} from '@heroicons/vue/24/outline'
+  Plus, VideoPlay, Edit, Delete, Document, Link, Box,
+  ArrowRight, MagicStick, DocumentCopy, Download
+} from '@element-plus/icons-vue'
 import { taskApi, aiApi, scriptApi } from '../utils/api.js'
 import { formatTimeFull, cronHumanText, statusText } from '../utils/formatters.js'
 
@@ -741,6 +445,8 @@ const showDrawer = ref(false)
 const isEditing = ref(false)
 const scriptMode = ref('path')
 const currentTask = ref(null)
+const taskFormRef = ref(null)
+const formSubmitting = ref(false)
 
 // AI state
 const aiDescription = ref('')
@@ -755,12 +461,27 @@ const aiCronConverting = ref(false)
 const aiCapabilities = ref({ docker_available: false })
 const currentWebhookToken = ref('')
 
+const logs = ref([])
+const showLogDrawer = ref(false)
+const logSearch = ref('')
+const logDateFilter = ref('')
+const aiLogSummary = ref('')
+const aiLogSummarizing = ref(false)
+const aiErrorDiagnosis = ref('')
+const aiDiagnosingLogId = ref(null)
+const currentLog = ref(null)
+
 const form = reactive({
   id: null, name: '', script_path: './scripts/', script_content: '',
   cron_expr: '* * * * *', timeout: 300, is_active: true,
   interpreter_path: null, depends_on: null,
   webhook_enabled: false, description: '', use_docker: false, docker_image: null
 })
+
+const formRules = {
+  name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
+  script_path: [{ required: true, message: '请输入脚本路径', trigger: 'blur' }]
+}
 
 const runningCount = computed(() => tasks.value.filter(t => t.status === 'running').length)
 const availableDependencies = computed(() => tasks.value.filter(t => t.id !== form.id))
@@ -792,6 +513,13 @@ async function fetchTasks() {
   } catch (e) { console.error(e) }
 }
 
+async function fetchLogs(taskId) {
+  try {
+    const res = await taskApi.logs(taskId)
+    logs.value = res.data
+  } catch (e) { console.error(e) }
+}
+
 async function fetchAiCapabilities() {
   try {
     const res = await aiApi.capabilities()
@@ -812,7 +540,6 @@ function getNextRun(cronExpr) {
   } catch { return '-' }
 }
 
-// Use shared formatters - local overrides for backward compatibility
 function highlightKeyword(text) {
   if (!logSearch.value) return text
   const kw = logSearch.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -828,10 +555,10 @@ async function generateScriptWithAI() {
     const res = await aiApi.generateScript(aiDescription.value)
     form.script_content = res.data.code
     scriptMode.value = 'editor'
-    // Auto-generate doc
     await generateDocWithAI()
+    ElMessage.success('AI 脚本生成成功')
   } catch (e) {
-    alert('AI生成失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('AI生成失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     aiGenerating.value = false
   }
@@ -844,7 +571,7 @@ async function reviewCodeWithAI() {
     const res = await aiApi.codeReview(form.script_content)
     aiReviewResult.value = res.data.review
   } catch (e) {
-    alert('AI审查失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('AI审查失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     aiReviewing.value = false
   }
@@ -871,9 +598,10 @@ async function convertNLPCron() {
     const res = await aiApi.nlpToCron(nlpCronInput.value)
     form.cron_expr = res.data.cron_expr
     nlpCronResult.value = res.data.description
+    ElMessage.success(res.data.description)
     setTimeout(() => { nlpCronResult.value = '' }, 3000)
   } catch (e) {
-    alert('Cron转换失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('Cron转换失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     aiCronConverting.value = false
   }
@@ -886,7 +614,7 @@ async function summarizeLogWithAI() {
     const res = await aiApi.summarizeLog(currentLog.value.output)
     aiLogSummary.value = res.data.summary
   } catch (e) {
-    alert('日志摘要失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('日志摘要失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     aiLogSummarizing.value = false
   }
@@ -900,7 +628,7 @@ async function diagnoseErrorWithAI(log) {
     const res = await aiApi.diagnoseError(log.output, '')
     aiErrorDiagnosis.value = res.data.diagnosis
   } catch (e) {
-    alert('AI诊断失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('AI诊断失败: ' + (e.response?.data?.detail || e.message))
   } finally {
     aiDiagnosingLogId.value = null
   }
@@ -908,120 +636,12 @@ async function diagnoseErrorWithAI(log) {
 
 function copyWebhookUrl() {
   navigator.clipboard.writeText(`${window.location.origin}/webhook/${currentWebhookToken.value}`)
-}
-
-// ========== Node Flow Functions ==========
-
-function getStatusColor(status) {
-  const colors = {
-    running: 'var(--color-primary)',
-    success: 'var(--color-success)',
-    failed: 'var(--color-danger)',
-    timeout: 'var(--color-warning)',
-    idle: 'var(--text-muted)'
-  }
-  return colors[status] || 'var(--text-muted)'
-}
-
-function getNodeColor(type) {
-  const colors = {
-    task: '#6366F1',
-    start: '#10B981',
-    end: '#EF4444'
-  }
-  return colors[type] || '#6366F1'
-}
-
-function getEdgePath(edge) {
-  const source = flowNodes.value.find(n => n.id === edge.source)
-  const target = flowNodes.value.find(n => n.id === edge.target)
-  if (!source || !target) return ''
-
-  const sx = source.x + 100
-  const sy = source.y + 40
-  const tx = target.x
-  const ty = target.y + 40
-
-  return `M ${sx} ${sy} C ${sx + 50} ${sy}, ${tx - 50} ${ty}, ${tx} ${ty}`
-}
-
-function addFlowNode() {
-  const newId = Date.now()
-  flowNodes.value.push({
-    id: newId,
-    task_id: null,
-    label: '新节点',
-    description: '双击编辑',
-    type: 'task',
-    x: 100 + Math.random() * 200,
-    y: 100 + Math.random() * 200
-  })
-}
-
-function addTaskToFlow(task) {
-  const newId = Date.now()
-  flowNodes.value.push({
-    id: newId,
-    task_id: task.id,
-    label: task.name,
-    description: task.script_path,
-    type: 'task',
-    x: 100 + Math.random() * 200,
-    y: 100 + Math.random() * 200
-  })
-}
-
-function onCanvasMouseDown(e) {
-  // Deselect nodes when clicking canvas
-}
-
-function onNodeMouseDown(e, node) {
-  draggedNode.value = node
-  dragOffset.value = {
-    x: e.clientX - node.x,
-    y: e.clientY - node.y
-  }
-
-  document.addEventListener('mousemove', onNodeMouseMove)
-  document.addEventListener('mouseup', onNodeMouseUp)
-}
-
-function onNodeMouseMove(e) {
-  if (!draggedNode.value) return
-  draggedNode.value.x = Math.max(0, e.clientX - dragOffset.value.x)
-  draggedNode.value.y = Math.max(0, e.clientY - dragOffset.value.y)
-}
-
-function onNodeMouseUp() {
-  draggedNode.value = null
-  document.removeEventListener('mousemove', onNodeMouseMove)
-  document.removeEventListener('mouseup', onNodeMouseUp)
-}
-
-async function saveNodeFlow() {
-  try {
-    const payload = {
-      name: 'Node Flow ' + new Date().toLocaleTimeString(),
-      nodes: JSON.stringify(flowNodes.value),
-      edges: JSON.stringify(flowEdges.value),
-      is_active: true
-    }
-    if (flowId.value) {
-      await nodeFlowApi.update(flowId.value, payload)
-    } else {
-      const res = await nodeFlowApi.create(payload)
-      flowId.value = res.data.id
-    }
-    alert('保存成功')
-  } catch (e) {
-    alert('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  ElMessage.success('Webhook URL 已复制')
 }
 
 // ========== Main Functions ==========
 
 function openCreateDrawer() {
-  console.log('openCreateDrawer called')
   isEditing.value = false
   resetForm()
   showDrawer.value = true
@@ -1044,7 +664,6 @@ function openEditDrawer(task) {
   form.docker_image = task.docker_image
   scriptMode.value = 'path'
   aiGeneratedDoc.value = task.description || ''
-  // Fetch webhook token if enabled
   if (task.webhook_enabled) {
     fetchWebhookInfo(task.id)
   }
@@ -1060,7 +679,11 @@ async function fetchWebhookInfo(taskId) {
   }
 }
 
-function closeDrawer() { showDrawer.value = false; aiReviewResult.value = null; aiGeneratedDoc.value = '' }
+function closeDrawer() {
+  showDrawer.value = false
+  aiReviewResult.value = null
+  aiGeneratedDoc.value = ''
+}
 
 function resetForm() {
   form.id = null
@@ -1085,7 +708,14 @@ function resetForm() {
 }
 
 async function submitForm() {
-  console.log('submitForm called', { form: form.name, script_path: form.script_path })
+  if (!taskFormRef.value) return
+  try {
+    await taskFormRef.value.validate()
+  } catch {
+    return
+  }
+
+  formSubmitting.value = true
   try {
     const payload = {
       name: form.name,
@@ -1101,7 +731,6 @@ async function submitForm() {
       docker_image: form.docker_image
     }
 
-    // If using editor mode, save the script first
     if (scriptMode.value === 'editor' && form.script_content) {
       const filename = 'task_' + Date.now() + '.py'
       await scriptApi.uploadText(filename, form.script_content)
@@ -1114,44 +743,76 @@ async function submitForm() {
         await taskApi.enableWebhook(form.id)
         await fetchWebhookInfo(form.id)
       }
+      ElMessage.success('任务更新成功')
     } else {
       const res = await taskApi.create(payload)
-      // Enable webhook if requested
       if (payload.webhook_enabled) {
         await taskApi.enableWebhook(res.data.id)
         await fetchWebhookInfo(res.data.id)
       }
+      ElMessage.success('任务创建成功')
     }
     closeDrawer()
     fetchTasks()
   } catch (e) {
-    console.error('submitForm error', e)
-    alert('操作失败: ' + (e.response?.data?.detail || e.message))
+    ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    formSubmitting.value = false
   }
 }
 
 async function toggleTask(task) {
-  try { await taskApi.toggle(task.id, !task.is_active); fetchTasks() }
-  catch (e) { console.error(e) }
+  try {
+    await taskApi.toggle(task.id, !task.is_active)
+    fetchTasks()
+    ElMessage.success(task.is_active ? '任务已禁用' : '任务已启用')
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
 
 async function runTask(task) {
   if (!task) task = currentTask.value
   try {
     await taskApi.run(task.id)
+    ElMessage.success('任务已启动')
     setTimeout(() => { fetchTasks(); refreshLogs() }, 1000)
-  } catch (e) { alert('启动失败: ' + (e.response?.data?.detail || e.message)) }
+  } catch (e) {
+    ElMessage.error('启动失败: ' + (e.response?.data?.detail || e.message))
+  }
 }
 
 async function deleteTask(task) {
-  if (!confirm(`确定删除任务 "${task.name}" 吗？`)) return
-  try { await taskApi.delete(task.id); fetchTasks() }
-  catch (e) { console.error(e) }
+  try {
+    await ElMessageBox.confirm(`确定删除任务 "${task.name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await taskApi.delete(task.id)
+    fetchTasks()
+    ElMessage.success('任务已删除')
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error(e)
+    }
+  }
 }
 
 function goToLogs(task) {
-  // Navigate to logs page with task filter
-  window.location.href = `/logs?taskId=${task.id}`
+  currentTask.value = task
+  fetchLogs(task.id)
+  showLogDrawer.value = true
+}
+
+function closeLogDrawer() {
+  showLogDrawer.value = false
+}
+
+function refreshLogs() {
+  if (currentTask.value) {
+    fetchLogs(currentTask.value.id)
+  }
 }
 
 async function downloadLog() {
@@ -1174,3 +835,119 @@ onMounted(() => {
   setInterval(fetchTasks, 5000)
 })
 </script>
+
+<style scoped>
+.tasks-page {
+  width: 100%;
+}
+
+.tasks-card {
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.editor-wrapper {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.log-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.log-search {
+  width: 200px;
+}
+
+.log-date {
+  width: 150px;
+}
+
+.terminal-content {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 16px;
+  background-color: var(--bg-primary);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.terminal-prompt {
+  margin-bottom: 16px;
+}
+
+.log-sessions {
+  margin-top: 16px;
+}
+
+.log-session {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.log-session:last-child {
+  border-bottom: none;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.log-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  align-items: center;
+}
+
+.log-output {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-top: 8px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+</style>

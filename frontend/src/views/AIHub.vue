@@ -1,534 +1,427 @@
 <template>
-  <div class="space-y-6">
+  <div class="ai-hub space-y-6">
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold" style="color: var(--text-main);">🤖 智能中枢</h1>
+        <h1 class="text-2xl font-bold" style="color: var(--text-main);">
+          <el-icon class="mr-2"><MagicStick /></el-icon>
+          智能中枢
+        </h1>
         <p class="text-sm mt-1" style="color: var(--text-muted);">AI Hub - 多模型路由与智能配置</p>
       </div>
     </div>
 
     <!-- Tab Navigation -->
-    <div class="flex gap-1 p-1 rounded-lg" style="background-color: var(--bg-secondary);">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        @click="activeTab = tab.id"
-        class="flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all"
-        :style="activeTab === tab.id
-          ? { backgroundColor: 'var(--color-primary-subtle)', color: 'var(--color-primary)' }
-          : { color: 'var(--text-muted)' }"
-      >
-        <span class="flex items-center justify-center gap-2">
-          <component :is="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
-        </span>
-      </button>
-    </div>
+    <el-tabs v-model="activeTab" class="ai-hub-tabs">
+      <el-tab-pane label="服务商" name="providers">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Cpu /></el-icon>
+            服务商配置
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="模型" name="models">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Box /></el-icon>
+            模型配置
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="路由" name="routing">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Connection /></el-icon>
+            功能路由
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="提示词" name="prompts">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><ChatDotRound /></el-icon>
+            提示词模板
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="RAG" name="rag">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Document /></el-icon>
+            RAG 上下文
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="权限" name="permissions">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><Lock /></el-icon>
+            权限级别
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="用量" name="usage">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><DataLine /></el-icon>
+            用量统计
+          </span>
+        </template>
+      </el-tab-pane>
+      <el-tab-pane label="审计" name="audit">
+        <template #label>
+          <span class="tab-label">
+            <el-icon><List /></el-icon>
+            审计日志
+          </span>
+        </template>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- Tab Content -->
     <div v-if="activeTab === 'providers'">
-      <!-- AI Providers Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">AI 服务商配置</h2>
-          <button
-            @click="showProviderModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 添加服务商
-          </button>
-        </div>
-
-        <!-- Provider Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div
-            v-for="provider in providers"
-            :key="provider.id"
-            class="p-4 rounded-lg border transition-all"
-            :style="{
-              backgroundColor: 'var(--bg-primary)',
-              borderColor: provider.is_enabled ? 'var(--color-primary)' : 'var(--border-subtle)'
-            }"
-          >
-            <div class="flex items-start justify-between mb-3">
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-10 h-10 rounded-lg flex items-center justify-center"
-                  :style="{ backgroundColor: 'var(--color-primary-subtle)' }"
-                >
-                  <CpuChipIcon class="w-5 h-5" style="color: var(--color-primary);" />
-                </div>
-                <div>
-                  <h3 class="font-medium" style="color: var(--text-main);">{{ provider.display_name }}</h3>
-                  <p class="text-xs" style="color: var(--text-muted);">{{ provider.name }}</p>
-                </div>
-              </div>
-              <span
-                class="px-2 py-0.5 rounded text-xs font-medium"
-                :style="{
-                  backgroundColor: provider.is_enabled ? 'var(--color-success)' + '20' : 'var(--bg-hover)',
-                  color: provider.is_enabled ? 'var(--color-success)' : 'var(--text-muted)'
-                }"
-              >
-                {{ provider.is_enabled ? '启用' : '禁用' }}
-              </span>
-            </div>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between">
-                <span style="color: var(--text-muted);">优先级</span>
-                <span style="color: var(--text-main);">{{ provider.priority }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span style="color: var(--text-muted);">API 限额</span>
-                <span style="color: var(--text-main);">{{ provider.rate_limit_rpm || '无限制' }}/分</span>
-              </div>
-            </div>
-            <div class="mt-4 flex gap-2">
-              <button
-                @click="editProvider(provider)"
-                class="flex-1 px-3 py-1.5 rounded text-xs font-medium"
-                style="background-color: var(--bg-hover); color: var(--text-main);"
-              >
-                编辑
-              </button>
-              <button
-                @click="deleteProvider(provider.id)"
-                class="px-3 py-1.5 rounded text-xs font-medium"
-                style="background-color: var(--color-danger)20; color: var(--color-danger);"
-              >
-                删除
-              </button>
-            </div>
+      <el-card shadow="never" class="provider-card">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">AI 服务商配置</span>
+            <el-button type="primary" @click="showProviderModal = true">
+              <el-icon><Plus /></el-icon>
+              添加服务商
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12" :md="8" v-for="provider in providers" :key="provider.id">
+            <el-card shadow="hover" class="provider-item" :class="{ 'is-enabled': provider.is_enabled }">
+              <div class="provider-header">
+                <div class="provider-info">
+                  <el-avatar :style="{ backgroundColor: 'var(--color-primary-subtle)' }">
+                    <el-icon><Cpu /></el-icon>
+                  </el-avatar>
+                  <div>
+                    <div class="font-medium">{{ provider.display_name }}</div>
+                    <div class="text-xs" style="color: var(--text-muted);">{{ provider.name }}</div>
+                  </div>
+                </div>
+                <el-tag :type="provider.is_enabled ? 'success' : 'info'" size="small">
+                  {{ provider.is_enabled ? '启用' : '禁用' }}
+                </el-tag>
+              </div>
+              <div class="provider-stats">
+                <div class="stat-item">
+                  <span class="stat-label">优先级</span>
+                  <span class="stat-value">{{ provider.priority }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">API 限额</span>
+                  <span class="stat-value">{{ provider.rate_limit_rpm || '无限制' }}/分</span>
+                </div>
+              </div>
+              <div class="provider-actions">
+                <el-button size="small" @click="editProvider(provider)">编辑</el-button>
+                <el-button size="small" type="danger" plain @click="deleteProvider(provider.id)">删除</el-button>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-empty v-if="providers.length === 0" description="暂无服务商配置" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'models'">
-      <!-- Models Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">模型配置</h2>
-          <button
-            @click="showModelModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 添加模型
-          </button>
-        </div>
+      <el-card shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">模型配置</span>
+            <el-button type="primary" @click="showModelModal = true">
+              <el-icon><Plus /></el-icon>
+              添加模型
+            </el-button>
+          </div>
+        </template>
 
-        <!-- Models Table -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr style="border-bottom: 1px solid var(--border-subtle);">
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">模型</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">类型</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">上下文窗口</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">输入成本</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">输出成本</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">状态</th>
-                <th class="text-right py-3 px-4 font-medium" style="color: var(--text-muted);">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="model in models"
-                :key="model.id"
-                style="border-bottom: 1px solid var(--border-subtle);"
-              >
-                <td class="py-3 px-4">
-                  <div>
-                    <span class="font-medium" style="color: var(--text-main);">{{ model.display_name }}</span>
-                    <p class="text-xs" style="color: var(--text-muted);">{{ model.model_id }}</p>
-                  </div>
-                </td>
-                <td class="py-3 px-4" style="color: var(--text-main);">{{ model.model_type }}</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">{{ model.context_window || '无限制' }}</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">${{ model.cost_per_input_token }}/1K</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">${{ model.cost_per_output_token }}/1K</td>
-                <td class="py-3 px-4">
-                  <span
-                    class="px-2 py-0.5 rounded text-xs font-medium"
-                    :style="{
-                      backgroundColor: model.is_enabled ? 'var(--color-success)' + '20' : 'var(--bg-hover)',
-                      color: model.is_enabled ? 'var(--color-success)' : 'var(--text-muted)'
-                    }"
-                  >
-                    {{ model.is_enabled ? '启用' : '禁用' }}
-                  </span>
-                </td>
-                <td class="py-3 px-4 text-right">
-                  <button
-                    @click="editModel(model)"
-                    class="px-3 py-1 rounded text-xs"
-                    style="color: var(--color-primary);"
-                  >
-                    编辑
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <el-table :data="models" stripe style="width: 100%">
+          <el-table-column label="模型" min-width="200">
+            <template #default="{ row }">
+              <div class="font-medium">{{ row.display_name }}</div>
+              <div class="text-xs" style="color: var(--text-muted);">{{ row.model_id }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="model_type" label="类型" width="100" />
+          <el-table-column prop="context_window" label="上下文窗口" width="120">
+            <template #default="{ row }">{{ row.context_window || '无限制' }}</template>
+          </el-table-column>
+          <el-table-column label="输入成本" width="120">
+            <template #default="{ row }">${{ row.cost_per_input_token }}/1K</template>
+          </el-table-column>
+          <el-table-column label="输出成本" width="120">
+            <template #default="{ row }">${{ row.cost_per_output_token }}/1K</template>
+          </el-table-column>
+          <el-table-column label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.is_enabled ? 'success' : 'info'" size="small">
+                {{ row.is_enabled ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100" align="right">
+            <template #default="{ row }">
+              <el-button size="small" type="primary" plain @click="editModel(row)">编辑</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="models.length === 0" description="暂无模型配置" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'routing'">
-      <!-- Feature Routing Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">功能路由配置</h2>
-          <button
-            @click="showRoutingModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 添加路由
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div
-            v-for="routing in featureRouting"
-            :key="routing.id"
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <div class="flex items-center justify-between mb-3">
-              <div>
-                <h3 class="font-medium" style="color: var(--text-main);">{{ routing.display_name }}</h3>
-                <p class="text-xs" style="color: var(--text-muted);">{{ routing.feature }}</p>
-              </div>
-              <span
-                class="px-2 py-0.5 rounded text-xs font-medium"
-                :style="{
-                  backgroundColor: routing.is_enabled ? 'var(--color-success)' + '20' : 'var(--bg-hover)',
-                  color: routing.is_enabled ? 'var(--color-success)' : 'var(--text-muted)'
-                }"
-              >
-                {{ routing.is_enabled ? '启用' : '禁用' }}
-              </span>
-            </div>
-            <div class="flex items-center gap-4 text-sm">
-              <div>
-                <span style="color: var(--text-muted);">主模型:</span>
-                <span style="color: var(--text-main);">{{ getModelName(routing.primary_model_id) }}</span>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">备用模型:</span>
-                <span style="color: var(--text-main);">{{ routing.fallback_model_ids?.length || 0 }} 个</span>
-              </div>
-            </div>
+      <el-card shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">功能路由配置</span>
+            <el-button type="primary" @click="showRoutingModal = true">
+              <el-icon><Plus /></el-icon>
+              添加路由
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <el-row :gutter="16">
+          <el-col :xs="24" :md="12" v-for="routing in featureRouting" :key="routing.id">
+            <el-card shadow="hover" class="routing-item">
+              <div class="routing-header">
+                <div>
+                  <div class="font-medium">{{ routing.display_name }}</div>
+                  <div class="text-xs" style="color: var(--text-muted);">{{ routing.feature }}</div>
+                </div>
+                <el-tag :type="routing.is_enabled ? 'success' : 'info'" size="small">
+                  {{ routing.is_enabled ? '启用' : '禁用' }}
+                </el-tag>
+              </div>
+              <div class="routing-info">
+                <div>
+                  <span style="color: var(--text-muted);">主模型:</span>
+                  <span>{{ getModelName(routing.primary_model_id) }}</span>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted);">备用模型:</span>
+                  <span>{{ routing.fallback_model_ids?.length || 0 }} 个</span>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-empty v-if="featureRouting.length === 0" description="暂无路由配置" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'prompts'">
-      <!-- Prompt Templates Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">提示词模板</h2>
-          <button
-            @click="showPromptModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 创建模板
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div
-            v-for="template in promptTemplates"
-            :key="template.id"
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <h3 class="font-medium" style="color: var(--text-main);">{{ template.display_name }}</h3>
-                <p class="text-xs" style="color: var(--text-muted);">{{ template.feature }}</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <span
-                  class="px-2 py-0.5 rounded text-xs font-medium"
-                  :style="{
-                    backgroundColor: template.is_enabled ? 'var(--color-success)' + '20' : 'var(--bg-hover)',
-                    color: template.is_enabled ? 'var(--color-success)' : 'var(--text-muted)'
-                  }"
-                >
-                  {{ template.is_enabled ? '启用' : '禁用' }}
-                </span>
-                <button
-                  @click="editPromptTemplate(template)"
-                  class="px-2 py-1 rounded text-xs"
-                  style="color: var(--color-primary);"
-                >
-                  编辑
-                </button>
-              </div>
-            </div>
-            <div class="grid grid-cols-4 gap-4 text-sm">
-              <div>
-                <span style="color: var(--text-muted);">温度</span>
-                <p style="color: var(--text-main);">{{ template.temperature }}</p>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">Top P</span>
-                <p style="color: var(--text-main);">{{ template.top_p }}</p>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">最大 Tokens</span>
-                <p style="color: var(--text-main);">{{ template.max_tokens }}</p>
-              </div>
-              <div>
-                <span style="color: var(--text-muted);">上下文行数</span>
-                <p style="color: var(--text-main);">{{ template.context_lines }}</p>
-              </div>
-            </div>
+      <el-card shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">提示词模板</span>
+            <el-button type="primary" @click="showPromptModal = true">
+              <el-icon><Plus /></el-icon>
+              创建模板
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <el-row :gutter="16">
+          <el-col :xs="24" :md="12" v-for="template in promptTemplates" :key="template.id">
+            <el-card shadow="hover" class="prompt-item">
+              <div class="prompt-header">
+                <div>
+                  <div class="font-medium">{{ template.display_name }}</div>
+                  <div class="text-xs" style="color: var(--text-muted);">{{ template.feature }}</div>
+                </div>
+                <div class="flex gap-2">
+                  <el-tag :type="template.is_enabled ? 'success' : 'info'" size="small">
+                    {{ template.is_enabled ? '启用' : '禁用' }}
+                  </el-tag>
+                  <el-button size="small" @click="editPromptTemplate(template)">编辑</el-button>
+                </div>
+              </div>
+              <div class="prompt-config">
+                <el-tag size="small">温度: {{ template.temperature }}</el-tag>
+                <el-tag size="small">Top P: {{ template.top_p }}</el-tag>
+                <el-tag size="small">最大Tokens: {{ template.max_tokens }}</el-tag>
+                <el-tag size="small">上下文行数: {{ template.context_lines }}</el-tag>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-empty v-if="promptTemplates.length === 0" description="暂无提示词模板" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'rag'">
-      <!-- RAG Context Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">本地 RAG 上下文</h2>
-          <button
-            @click="showRagModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 添加上下文
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            v-for="rag in ragContexts"
-            :key="rag.id"
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <h3 class="font-medium" style="color: var(--text-main);">{{ rag.context_key }}</h3>
-                <p class="text-xs" style="color: var(--text-muted);">{{ rag.context_type }}</p>
-              </div>
-              <span
-                class="px-2 py-0.5 rounded text-xs font-medium"
-                :style="{
-                  backgroundColor: rag.is_enabled ? 'var(--color-success)' + '20' : 'var(--bg-hover)',
-                  color: rag.is_enabled ? 'var(--color-success)' : 'var(--text-muted)'
-                }"
-              >
-                {{ rag.is_enabled ? '启用' : '禁用' }}
-              </span>
-            </div>
-            <p class="text-sm line-clamp-3" style="color: var(--text-muted);">{{ rag.content }}</p>
-            <div class="mt-3 flex items-center justify-between">
-              <span class="text-xs" style="color: var(--text-disabled);">注入位置: {{ rag.injection_position }}</span>
-              <button
-                @click="deleteRag(rag.id)"
-                class="px-3 py-1 rounded text-xs"
-                style="color: var(--color-danger);"
-              >
-                删除
-              </button>
-            </div>
+      <el-card shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">本地 RAG 上下文</span>
+            <el-button type="primary" @click="showRagModal = true">
+              <el-icon><Plus /></el-icon>
+              添加上下文
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <el-row :gutter="16">
+          <el-col :xs="24" :md="12" v-for="rag in ragContexts" :key="rag.id">
+            <el-card shadow="hover" class="rag-item">
+              <div class="rag-header">
+                <div>
+                  <div class="font-medium">{{ rag.context_key }}</div>
+                  <div class="text-xs" style="color: var(--text-muted);">{{ rag.context_type }}</div>
+                </div>
+                <el-tag :type="rag.is_enabled ? 'success' : 'info'" size="small">
+                  {{ rag.is_enabled ? '启用' : '禁用' }}
+                </el-tag>
+              </div>
+              <div class="rag-content">{{ rag.content }}</div>
+              <div class="rag-footer">
+                <span class="text-xs" style="color: var(--text-disabled);">注入位置: {{ rag.injection_position }}</span>
+                <el-button size="small" type="danger" plain @click="deleteRag(rag.id)">删除</el-button>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-empty v-if="ragContexts.length === 0" description="暂无 RAG 上下文" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'permissions'">
-      <!-- Permission Levels Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">AI 权限级别</h2>
-          <button
-            @click="showPermissionModal = true"
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style="background-color: var(--color-primary); color: white;"
-          >
-            + 添加权限
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <div
-            v-for="perm in permissions"
-            :key="perm.id"
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div
-                  class="w-12 h-12 rounded-lg flex items-center justify-center font-bold text-lg"
-                  :style="{
-                    backgroundColor: getPermissionColor(perm.permission_level) + '20',
-                    color: getPermissionColor(perm.permission_level)
-                  }"
-                >
-                  L{{ perm.permission_level }}
-                </div>
-                <div>
-                  <h3 class="font-medium" style="color: var(--text-main);">{{ perm.permission_name }}</h3>
-                  <p class="text-sm" style="color: var(--text-muted);">{{ perm.description }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <span
-                  class="px-2 py-0.5 rounded text-xs font-medium"
-                  :style="{
-                    backgroundColor: perm.requires_confirm ? 'var(--color-warning)' + '20' : 'var(--color-success)' + '20',
-                    color: perm.requires_confirm ? 'var(--color-warning)' : 'var(--color-success)'
-                  }"
-                >
-                  {{ perm.requires_confirm ? '需确认' : '自动执行' }}
-                </span>
-                <button
-                  @click="editPermission(perm)"
-                  class="px-3 py-1.5 rounded text-xs"
-                  style="background-color: var(--bg-hover); color: var(--text-main);"
-                >
-                  编辑
-                </button>
-              </div>
-            </div>
+      <el-card shadow="never">
+        <template #header>
+          <div class="card-header">
+            <span class="font-semibold">AI 权限级别</span>
+            <el-button type="primary" @click="showPermissionModal = true">
+              <el-icon><Plus /></el-icon>
+              添加权限
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <el-row :gutter="16">
+          <el-col :xs="24" v-for="perm in permissions" :key="perm.id">
+            <el-card shadow="hover" class="perm-item">
+              <div class="perm-content">
+                <el-avatar :size="48" :style="{ backgroundColor: getPermissionColor(perm.permission_level) + '20', color: getPermissionColor(perm.permission_level) }">
+                  L{{ perm.permission_level }}
+                </el-avatar>
+                <div class="perm-info">
+                  <div class="font-medium">{{ perm.permission_name }}</div>
+                  <div class="text-sm" style="color: var(--text-muted);">{{ perm.description }}</div>
+                </div>
+                <div class="perm-status">
+                  <el-tag :type="perm.requires_confirm ? 'warning' : 'success'" size="small">
+                    {{ perm.requires_confirm ? '需确认' : '自动执行' }}
+                  </el-tag>
+                  <el-button size="small" @click="editPermission(perm)">编辑</el-button>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <el-empty v-if="permissions.length === 0" description="暂无权限配置" />
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'usage'">
-      <!-- Token Usage Tab -->
-      <div class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <p class="text-sm" style="color: var(--text-muted);">今日请求</p>
-            <p class="text-2xl font-bold mt-1" style="color: var(--text-main);">{{ usageStats.total_requests }}</p>
-          </div>
-          <div
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <p class="text-sm" style="color: var(--text-muted);">今日消耗</p>
-            <p class="text-2xl font-bold mt-1" style="color: var(--color-primary);">${{ usageStats.total_cost.toFixed(4) }}</p>
-          </div>
-          <div
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <p class="text-sm" style="color: var(--text-muted);">输入 Tokens</p>
-            <p class="text-2xl font-bold mt-1" style="color: var(--text-main);">{{ usageStats.input_tokens.toLocaleString() }}</p>
-          </div>
-          <div
-            class="p-4 rounded-lg border"
-            :style="{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }"
-          >
-            <p class="text-sm" style="color: var(--text-muted);">输出 Tokens</p>
-            <p class="text-2xl font-bold mt-1" style="color: var(--text-main);">{{ usageStats.output_tokens.toLocaleString() }}</p>
-          </div>
-        </div>
+      <el-row :gutter="16" class="mb-4">
+        <el-col :xs="12" :md="6">
+          <el-card shadow="never" class="stat-card">
+            <div class="stat-value">{{ usageStats.total_requests }}</div>
+            <div class="stat-label">今日请求</div>
+          </el-card>
+        </el-col>
+        <el-col :xs="12" :md="6">
+          <el-card shadow="never" class="stat-card">
+            <div class="stat-value" style="color: var(--color-primary);">${{ usageStats.total_cost.toFixed(4) }}</div>
+            <div class="stat-label">今日消耗</div>
+          </el-card>
+        </el-col>
+        <el-col :xs="12" :md="6">
+          <el-card shadow="never" class="stat-card">
+            <div class="stat-value">{{ usageStats.input_tokens.toLocaleString() }}</div>
+            <div class="stat-label">输入 Tokens</div>
+          </el-card>
+        </el-col>
+        <el-col :xs="12" :md="6">
+          <el-card shadow="never" class="stat-card">
+            <div class="stat-value">{{ usageStats.output_tokens.toLocaleString() }}</div>
+            <div class="stat-label">输出 Tokens</div>
+          </el-card>
+        </el-col>
+      </el-row>
 
-        <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-          <h2 class="text-lg font-semibold mb-4" style="color: var(--text-main);">用量趋势</h2>
-          <div class="h-64 flex items-center justify-center" style="color: var(--text-muted);">
-            图表区域 (需要 ECharts 或 Chart.js)
-          </div>
+      <el-card shadow="never">
+        <template #header>
+          <span class="font-semibold">用量趋势</span>
+        </template>
+        <div class="h-64 flex items-center justify-center" style="color: var(--text-muted);">
+          图表区域 (需要 ECharts 或 Chart.js)
         </div>
-      </div>
+      </el-card>
     </div>
 
     <div v-if="activeTab === 'audit'">
-      <!-- Audit Logs Tab -->
-      <div class="rounded-lg p-6" style="background-color: var(--bg-secondary); border: 1px solid var(--border-subtle);">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold" style="color: var(--text-main);">AI 操作审计日志</h2>
-        </div>
+      <el-card shadow="never">
+        <template #header>
+          <span class="font-semibold">AI 操作审计日志</span>
+        </template>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr style="border-bottom: 1px solid var(--border-subtle);">
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">时间</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">功能</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">模型</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">状态</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">延迟</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">Tokens</th>
-                <th class="text-left py-3 px-4 font-medium" style="color: var(--text-muted);">成本</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="log in auditLogs"
-                :key="log.id"
-                style="border-bottom: 1px solid var(--border-subtle);"
-              >
-                <td class="py-3 px-4" style="color: var(--text-muted);">{{ formatTime(log.created_at) }}</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">{{ log.feature }}</td>
-                <td class="py-3 px-4" style="color: var(--text-muted);">{{ getModelName(log.model_id) }}</td>
-                <td class="py-3 px-4">
-                  <span
-                    class="px-2 py-0.5 rounded text-xs font-medium"
-                    :style="getStatusStyle(log.status)"
-                  >
-                    {{ log.status }}
-                  </span>
-                </td>
-                <td class="py-3 px-4" style="color: var(--text-main);">{{ log.latency_ms }}ms</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">{{ log.input_tokens + log.output_tokens }}</td>
-                <td class="py-3 px-4" style="color: var(--text-main);">${{ log.cost_usd.toFixed(4) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <el-table :data="auditLogs" stripe style="width: 100%">
+          <el-table-column prop="created_at" label="时间" width="180">
+            <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+          </el-table-column>
+          <el-table-column prop="feature" label="功能" width="120" />
+          <el-table-column label="模型" width="150">
+            <template #default="{ row }">{{ getModelName(row.model_id) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)" size="small">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="latency_ms" label="延迟" width="100">
+            <template #default="{ row }">{{ row.latency_ms }}ms</template>
+          </el-table-column>
+          <el-table-column label="Tokens" width="100">
+            <template #default="{ row }">{{ row.input_tokens + row.output_tokens }}</template>
+          </el-table-column>
+          <el-table-column label="成本" width="100">
+            <template #default="{ row }">${{ row.cost_usd.toFixed(4) }}</template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="auditLogs.length === 0" description="暂无审计日志" />
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import {
-  CpuChipIcon,
-  GlobeAltIcon,
-  PuzzlePieceIcon,
-  CodeBracketIcon,
-  BookOpenIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
-  ClipboardDocumentListIcon
-} from '@heroicons/vue/24/outline'
+  Cpu, Box, Connection, ChatDotRound, Document, Lock,
+  DataLine, List, Plus, MagicStick
+} from '@element-plus/icons-vue'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
 
 const activeTab = ref('providers')
-
-const tabs = [
-  { id: 'providers', label: '服务商', icon: GlobeAltIcon },
-  { id: 'models', label: '模型', icon: CpuChipIcon },
-  { id: 'routing', label: '路由', icon: PuzzlePieceIcon },
-  { id: 'prompts', label: '提示词', icon: CodeBracketIcon },
-  { id: 'rag', label: 'RAG 上下文', icon: BookOpenIcon },
-  { id: 'permissions', label: '权限', icon: ShieldCheckIcon },
-  { id: 'usage', label: '用量统计', icon: ChartBarIcon },
-  { id: 'audit', label: '审计日志', icon: ClipboardDocumentListIcon }
-]
 
 // Data
 const providers = ref([])
@@ -639,14 +532,14 @@ function getPermissionColor(level) {
   return colors[level] || 'var(--text-muted)'
 }
 
-function getStatusStyle(status) {
-  const styles = {
-    success: { backgroundColor: 'var(--color-success)20', color: 'var(--color-success)' },
-    error: { backgroundColor: 'var(--color-danger)20', color: 'var(--color-danger)' },
-    fallback: { backgroundColor: 'var(--color-warning)20', color: 'var(--color-warning)' },
-    cached: { backgroundColor: 'var(--color-primary)20', color: 'var(--color-primary)' }
+function getStatusType(status) {
+  const types = {
+    success: 'success',
+    error: 'danger',
+    fallback: 'warning',
+    cached: ''
   }
-  return styles[status] || { backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }
+  return types[status] || 'info'
 }
 
 function formatTime(timeStr) {
@@ -691,3 +584,109 @@ onMounted(() => {
   loadAuditLogs()
 })
 </script>
+
+<style scoped>
+.ai-hub-tabs :deep(.el-tabs__header) {
+  margin-bottom: 1rem;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.provider-item,
+.routing-item,
+.prompt-item,
+.rag-item,
+.perm-item {
+  margin-bottom: 16px;
+}
+
+.provider-item.is-enabled {
+  border-color: var(--color-primary);
+}
+
+.provider-header,
+.routing-header,
+.prompt-header,
+.rag-header,
+.perm-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.provider-info,
+.perm-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.provider-stats,
+.routing-info,
+.prompt-config {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-weight: 500;
+}
+
+.provider-actions,
+.rag-footer,
+.perm-status {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rag-content {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-card .stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.stat-card .stat-label {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+</style>

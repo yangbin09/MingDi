@@ -582,3 +582,85 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ========================================
+   Element Plus Dark Mode Overrides
+   ======================================== */
+
+/* Ensure Element Plus components work with our theme system */
+.dark {
+  /* Element Plus dark mode variables override */
+  --el-bg-color: var(--bg-primary);
+  --el-bg-color-overlay: var(--bg-secondary);
+  --el-text-color-primary: var(--text-main);
+  --el-text-color-regular: var(--text-muted);
+  --el-border-color: var(--border-subtle);
+  --el-border-color-light: var(--border-subtle);
+  --el-fill-color-blank: var(--bg-secondary);
+}
+
+/* Element Plus table styling */
+.dark .el-table {
+  --el-table-bg-color: var(--bg-primary);
+  --el-table-tr-bg-color: var(--bg-primary);
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-subtle);
+}
+
+/* Element Plus card styling */
+.dark .el-card {
+  --el-card-bg-color: var(--bg-secondary);
+  --el-card-border-color: var(--border-subtle);
+}
+
+/* Element Plus menu styling */
+.dark .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-text-color: var(--text-muted);
+  --el-menu-active-color: var(--color-primary);
+}
+
+/* Element Plus dialog/drawer styling */
+.dark .el-drawer {
+  --el-drawer-bg-color: var(--bg-secondary);
+}
+
+/* Element Plus tabs styling */
+.dark .el-tabs {
+  --el-tabs-header-height: 48px;
+}
+
+/* Element Plus input styling */
+.dark .el-input__wrapper {
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Element Plus button styling for ghost buttons */
+.dark .el-button--primary.is-plain {
+  --el-button-bg-color: var(--color-primary-subtle);
+  --el-button-border-color: var(--color-primary);
+  --el-button-text-color: var(--color-primary);
+}
+
+/* Element Plus tag styling */
+.dark .el-tag {
+  --el-tag-bg-color: var(--bg-tertiary);
+  --el-tag-border-color: var(--border-subtle);
+  --el-tag-text-color: var(--text-muted);
+}
+
+/* Element Plus select styling */
+.dark .el-select-dropdown {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* Element Plus message box styling */
+.dark .el-message-box {
+  --el-messagebox-bg-color: var(--bg-secondary);
+  --el-messagebox-border-color: var(--border-subtle);
+}
