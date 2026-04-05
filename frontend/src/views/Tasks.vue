@@ -491,7 +491,7 @@
                 {{ form.webhook_enabled ? '启用 Webhook URL 触发' : '禁用' }}
               </span>
             </div>
-            <div v-if="form.webhook_enabled && isEditing" class="mt-2 text-xs">
+            <div v-if="form.webhook_enabled && (isEditing || currentWebhookToken)" class="mt-2 text-xs">
               <div class="flex items-center gap-2">
                 <code class="px-2 py-1 rounded" :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-blue)' }">
                   /webhook/{{ currentWebhookToken }}
@@ -1256,12 +1256,14 @@ async function submitForm() {
       await api.put(`/tasks/${form.id}`, payload)
       if (payload.webhook_enabled) {
         await api.post(`/tasks/${form.id}/enable-webhook`)
+        await fetchWebhookInfo(form.id)
       }
     } else {
       const res = await api.post('/tasks', payload)
       // Enable webhook if requested
       if (payload.webhook_enabled) {
         await api.post(`/tasks/${res.data.id}/enable-webhook`)
+        await fetchWebhookInfo(res.data.id)
       }
     }
     closeDrawer()

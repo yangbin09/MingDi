@@ -8,7 +8,7 @@ import shutil
 import time
 import secrets
 
-from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow
+from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, LogResponse,
     EnvVarCreate, EnvVarUpdate, EnvVarResponse,
@@ -20,7 +20,8 @@ from schemas import (
     AIHumanizeAlertRequest, AIHumanizeAlertResponse,
     WebhookTriggerRequest, WebhookTriggerResponse,
     NodeFlowCreate, NodeFlowUpdate, NodeFlowResponse,
-    DockerRunRequest, DockerRunResponse
+    DockerRunRequest, DockerRunResponse,
+    SystemSettingsResponse, SystemSettingsUpdate
 )
 from scheduler import add_task_job, remove_task_job, execute_task_now, start_scheduler, stop_scheduler
 from ai_service import ai_service, generate_webhook_token, extract_requirements, parse_cron_human
@@ -42,8 +43,89 @@ SCRIPTS_DIR = "./scripts"
 @app.on_event("startup")
 def startup_event():
     init_db()
+    migrate_database()
     os.makedirs(SCRIPTS_DIR, exist_ok=True)
     start_scheduler()
+
+
+def migrate_database():
+    """Auto-migrate database to add new columns"""
+    import sqlite3
+    import os
+
+    db_path = "./pycron.db"
+    if not os.path.exists(db_path):
+        return
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Check existing columns in tasks table
+    cursor.execute("PRAGMA table_info(tasks)")
+    columns = [col[1] for col in cursor.fetchall()]
+
+    # New columns to add
+    new_columns = {
+        'webhook_enabled': 'ALTER TABLE tasks ADD COLUMN webhook_enabled BOOLEAN DEFAULT 0',
+        'webhook_token': 'ALTER TABLE tasks ADD COLUMN webhook_token TEXT',
+        'description': 'ALTER TABLE tasks ADD COLUMN description TEXT',
+        'use_docker': 'ALTER TABLE tasks ADD COLUMN use_docker BOOLEAN DEFAULT 0',
+        'docker_image': 'ALTER TABLE tasks ADD COLUMN docker_image TEXT',
+    }
+
+    for col, sql in new_columns.items():
+        if col not in columns:
+            try:
+                cursor.execute(sql)
+                print(f"Migrated: Added {col} column to tasks table")
+            except Exception as e:
+                print(f"Column {col} already exists or error: {e}")
+
+    # Check alert_configs table for ai_humanize
+    cursor.execute("PRAGMA table_info(alert_configs)")
+    alert_cols = [col[1] for col in cursor.fetchall()]
+
+    if 'ai_humanize' not in alert_cols:
+        try:
+            cursor.execute("ALTER TABLE alert_configs ADD COLUMN ai_humanize BOOLEAN DEFAULT 0")
+            print("Migrated: Added ai_humanize column to alert_configs table")
+        except Exception as e:
+            print(f"Column ai_humanize already exists or error: {e}")
+
+    # Create system_settings table if not exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'")
+    if not cursor.fetchone():
+        cursor.execute("""
+            CREATE TABLE system_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT UNIQUE NOT NULL,
+                value TEXT,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        print("Migrated: Created system_settings table")
+
+    # Create node_flows table if not exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='node_flows'")
+    if not cursor.fetchone():
+        cursor.execute("""
+            CREATE TABLE node_flows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                nodes TEXT DEFAULT '[]',
+                edges TEXT DEFAULT '[]',
+                is_active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        print("Migrated: Created node_flows table")
+
+    conn.commit()
+    conn.close()
 
 
 @app.on_event("shutdown")
@@ -605,6 +687,84 @@ def import_config(data: ExportData, db: Session = Depends(get_db)):
         "env_vars_imported": imported_envs,
         "alerts_imported": imported_alerts
     }
+
+
+# ============ System Settings ============
+
+def get_setting(db: Session, key: str) -> Optional[str]:
+    """Get a system setting value"""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == key).first()
+    return setting.value if setting else None
+
+
+def set_setting(db: Session, key: str, value: str, description: str = None) -> None:
+    """Set a system setting value"""
+    setting = db.query(SystemSettings).filter(SystemSettings.key == key).first()
+    if setting:
+        setting.value = value
+        if description:
+            setting.description = description
+    else:
+        setting = SystemSettings(key=key, value=value, description=description)
+        db.add(setting)
+    db.commit()
+
+
+@app.get("/system/settings", response_model=SystemSettingsResponse)
+def get_system_settings(db: Session = Depends(get_db)):
+    """Get all system settings (AI config)"""
+    return SystemSettingsResponse(
+        minimax_api_key=get_setting(db, "minimax_api_key"),
+        minimax_group_id=get_setting(db, "minimax_group_id"),
+        ai_enabled=bool(get_setting(db, "minimax_api_key") and get_setting(db, "minimax_group_id"))
+    )
+
+
+@app.put("/system/settings", response_model=SystemSettingsResponse)
+def update_system_settings(settings: SystemSettingsUpdate, db: Session = Depends(get_db)):
+    """Update system settings (AI config)"""
+    if settings.minimax_api_key is not None:
+        set_setting(db, "minimax_api_key", settings.minimax_api_key, "Minimax API Key for AI features")
+    if settings.minimax_group_id is not None:
+        set_setting(db, "minimax_group_id", settings.minimax_group_id, "Minimax Group ID for AI features")
+
+    # Update ai_service instance
+    if settings.minimax_api_key is not None:
+        ai_service.api_key = settings.minimax_api_key
+    if settings.minimax_group_id is not None:
+        ai_service.group_id = settings.minimax_group_id
+
+    return SystemSettingsResponse(
+        minimax_api_key=get_setting(db, "minimax_api_key"),
+        minimax_group_id=get_setting(db, "minimax_group_id"),
+        ai_enabled=bool(get_setting(db, "minimax_api_key") and get_setting(db, "minimax_group_id"))
+    )
+
+
+@app.post("/system/settings/test-ai")
+def test_ai_connection(db: Session = Depends(get_db)):
+    """Test AI API connection"""
+    api_key = get_setting(db, "minimax_api_key")
+    group_id = get_setting(db, "minimax_group_id")
+
+    if not api_key or not group_id:
+        return {"success": False, "message": "API key or Group ID not configured"}
+
+    # Temporarily set the credentials
+    original_key = ai_service.api_key
+    original_group = ai_service.group_id
+    ai_service.api_key = api_key
+    ai_service.group_id = group_id
+
+    try:
+        result = ai_service.generate_script("print('hello')")
+        success = result and "# AI服务未配置" not in result
+        return {"success": success, "message": "Connection successful" if success else "Connection failed"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+    finally:
+        ai_service.api_key = original_key
+        ai_service.group_id = original_group
 
 
 # ============ AI Features ============

@@ -288,6 +288,138 @@
       </div>
     </div>
 
+    <!-- AI Settings Tab -->
+    <div v-if="activeTab === 'ai'" class="space-y-6">
+      <div class="flex items-center gap-3">
+        <div class="h-1 w-6 rounded-full" :style="{ background: 'linear-gradient(90deg, var(--color-purple), var(--color-primary))' }"></div>
+        <h2 class="text-lg font-semibold" style="color: var(--text-main);">AI 与告警设置</h2>
+      </div>
+
+      <!-- Minimax API Configuration -->
+      <div class="card rounded-xl p-6">
+        <div class="flex items-center gap-4 mb-5">
+          <div
+            class="w-12 h-12 rounded-xl flex items-center justify-center"
+            :style="{ backgroundColor: 'rgba(168, 85, 247, 0.15)', border: '1px solid var(--border-subtle)' }"
+          >
+            <SparklesIcon class="w-6 h-6" style="color: var(--color-purple);" />
+          </div>
+          <div>
+            <h3 class="font-semibold" style="color: var(--text-main);">Minimax API 配置</h3>
+            <p class="text-sm" style="color: var(--text-muted);">配置大模型 API 凭证以启用 AI 功能</p>
+          </div>
+          <div class="ml-auto">
+            <span
+              class="px-3 py-1 text-xs font-medium rounded-full"
+              :style="aiSettings.ai_enabled
+                ? { backgroundColor: 'var(--color-success-subtle)', color: 'var(--color-success)' }
+                : { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
+            >
+              {{ aiSettings.ai_enabled ? '已启用' : '未启用' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">API Key</label>
+            <input
+              v-model="aiSettings.minimax_api_key"
+              type="password"
+              class="input font-mono text-sm"
+              placeholder="输入您的 Minimax API Key"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-muted);">Group ID</label>
+            <input
+              v-model="aiSettings.minimax_group_id"
+              type="text"
+              class="input font-mono text-sm"
+              placeholder="输入您的 Minimax Group ID"
+            />
+          </div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <button
+              @click="testAIConnection"
+              :disabled="aiTesting || !aiSettings.minimax_api_key || !aiSettings.minimax_group_id"
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+              :style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }"
+              :class="{ 'opacity-50': aiTesting }"
+            >
+              <SparklesIcon v-if="!aiTesting" class="w-4 h-4" />
+              <span v-if="aiTesting" class="animate-spin">⟳</span>
+              {{ aiTesting ? '测试中...' : '测试连接' }}
+            </button>
+            <button
+              @click="saveAISettings"
+              :disabled="aiSettingsSaved"
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              :style="{ backgroundColor: 'var(--color-primary)', color: 'var(--text-inverse)' }"
+            >
+              {{ aiSettingsSaved ? '已保存' : '保存配置' }}
+            </button>
+          </div>
+
+          <div v-if="aiTestResult" class="mt-3 p-3 rounded-lg text-sm" :style="aiTestResult.success
+            ? { backgroundColor: 'var(--color-success-subtle)', color: 'var(--color-success)' }
+            : { backgroundColor: 'var(--color-danger-subtle)', color: 'var(--color-danger)' }">
+            {{ aiTestResult.message }}
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Features Info -->
+      <div class="card rounded-xl p-6">
+        <h3 class="font-semibold mb-4" style="color: var(--text-main);">支持的 AI 功能</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-primary);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">Text-to-Script</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">自然语言生成 Python 脚本</p>
+          </div>
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-purple);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">AI 代码审查</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">代码性能与安全检查</p>
+          </div>
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-warning);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">错误诊断</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">智能错误分析与修复建议</p>
+          </div>
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-success);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">NLP to Cron</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">自然语言转 Cron 表达式</p>
+          </div>
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-cyan);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">日志摘要</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">AI 提炼日志关键信息</p>
+          </div>
+          <div class="p-3 rounded-lg" :style="{ backgroundColor: 'var(--bg-tertiary)' }">
+            <div class="flex items-center gap-2 mb-1">
+              <SparklesIcon class="w-4 h-4" style="color: var(--color-blue);" />
+              <span class="text-sm font-medium" style="color: var(--text-main);">拟人化告警</span>
+            </div>
+            <p class="text-xs" style="color: var(--text-muted);">友好的告警消息推送</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Env Var Modal -->
     <div v-if="showEnvModal" class="fixed inset-0 z-50 overflow-hidden">
       <div class="absolute inset-0 backdrop-blur-sm" :style="{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }" @click="closeEnvModal"></div>
@@ -418,6 +550,7 @@ const api = axios.create({ baseURL: 'http://localhost:8000' })
 const tabs = [
   { id: 'env', label: '环境变量' },
   { id: 'alerts', label: '告警配置' },
+  { id: 'ai', label: 'AI 设置' },
   { id: 'export', label: '导入导出' }
 ]
 const activeTab = ref('env')
@@ -435,6 +568,16 @@ const envForm = reactive({ key: '', value: '', description: '', is_secret: false
 const alertForm = reactive({ name: '', webhook_url: '', events: 'failed,timeout', is_active: true, ai_humanize: false })
 
 const importFile = ref(null)
+
+// AI Settings
+const aiSettings = reactive({
+  minimax_api_key: '',
+  minimax_group_id: '',
+  ai_enabled: false
+})
+const aiSettingsSaved = ref(false)
+const aiTesting = ref(false)
+const aiTestResult = ref(null)
 
 async function fetchEnvVars() {
   try { const res = await api.get('/env-vars'); envVars.value = res.data }
@@ -534,5 +677,46 @@ async function importConfig(event) {
   event.target.value = ''
 }
 
-onMounted(() => { fetchEnvVars(); fetchAlerts() })
+async function fetchAISettings() {
+  try {
+    const res = await api.get('/system/settings')
+    aiSettings.minimax_api_key = res.data.minimax_api_key || ''
+    aiSettings.minimax_group_id = res.data.minimax_group_id || ''
+    aiSettings.ai_enabled = res.data.ai_enabled || false
+  } catch (e) { console.error(e) }
+}
+
+async function saveAISettings() {
+  try {
+    await api.put('/system/settings', {
+      minimax_api_key: aiSettings.minimax_api_key,
+      minimax_group_id: aiSettings.minimax_group_id
+    })
+    aiSettingsSaved.value = true
+    aiSettings.ai_enabled = !!(aiSettings.minimax_api_key && aiSettings.minimax_group_id)
+    setTimeout(() => { aiSettingsSaved.value = false }, 2000)
+  } catch (e) { alert('保存失败: ' + (e.response?.data?.detail || e.message)) }
+}
+
+async function testAIConnection() {
+  aiTesting.value = true
+  aiTestResult.value = null
+  try {
+    // First save current settings
+    await api.put('/system/settings', {
+      minimax_api_key: aiSettings.minimax_api_key,
+      minimax_group_id: aiSettings.minimax_group_id
+    })
+    // Then test
+    const res = await api.post('/system/settings/test-ai')
+    aiTestResult.value = res.data
+    aiSettings.ai_enabled = res.data.success
+  } catch (e) {
+    aiTestResult.value = { success: false, message: '测试失败: ' + (e.response?.data?.detail || e.message) }
+  } finally {
+    aiTesting.value = false
+  }
+}
+
+onMounted(() => { fetchEnvVars(); fetchAlerts(); fetchAISettings() })
 </script>

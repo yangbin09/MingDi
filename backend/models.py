@@ -88,6 +88,18 @@ class Log(Base):
     task = relationship("Task", back_populates="logs")
 
 
+class SystemSettings(Base):
+    """System configuration stored in database"""
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(255), nullable=False, unique=True)
+    value = Column(Text, nullable=True)
+    description = Column(String(512), nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 def init_db():
     """Initialize database tables"""
     Base.metadata.create_all(bind=engine)

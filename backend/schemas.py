@@ -272,3 +272,22 @@ class DockerRunResponse(BaseModel):
     exit_code: int
     execution_time: float
     error: Optional[str] = None
+
+
+# ============ System Settings Schemas ============
+
+class SystemSettingsItem(BaseModel):
+    key: str
+    value: Optional[str] = None
+    description: Optional[str] = None
+
+
+class SystemSettingsResponse(BaseModel):
+    minimax_api_key: Optional[str] = None
+    minimax_group_id: Optional[str] = None
+    ai_enabled: bool = False
+
+
+class SystemSettingsUpdate(BaseModel):
+    minimax_api_key: Optional[str] = None
+    minimax_group_id: Optional[str] = None
