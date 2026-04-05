@@ -264,7 +264,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import {
   Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, Loading
@@ -382,6 +382,10 @@ onMounted(() => {
   fetchTasks()
   fetchLogs()
   startLiveDurationRefresh(logs)
+})
+
+onUnmounted(() => {
+  cleanupAll()
 })
 </script>
 

@@ -1,8 +1,9 @@
 /**
  * 日志实时刷新 Composable
  * 统一管理 autoRefreshTimer 和 liveDurationTimer
+ * 使用显式清理模式，避免 onUnmounted 时机问题
  */
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch } from 'vue'
 
 // ============= 状态定义 =============
 const autoRefreshInterval = ref<number | null>(null)
@@ -33,9 +34,15 @@ function setAutoRefreshInterval(interval: number | null): void {
 // ============= 实时时长刷新 =============
 function startLiveDurationRefresh(logsRef: { value: any[] }): void {
   stopLiveDurationRefresh()
+  // 记录初始长度，避免每次都创建新数组
+  let lastLength = logsRef.value.length
   liveDurationTimer = setInterval(() => {
-    // 触发响应式更新 - 通过替换数组引用实现
-    logsRef.value = [...logsRef.value]
+    // 只有在数据实际变化时才触发更新
+    if (logsRef.value.length !== lastLength) {
+      lastLength = logsRef.value.length
+      // 强制触发响应式更新（Vue 3）
+      logsRef.value = [...logsRef.value]
+    }
   }, 1000)
 }
 
@@ -65,10 +72,6 @@ function cleanupAll(): void {
   stopAutoRefresh()
   stopLiveDurationRefresh()
 }
-
-onUnmounted(() => {
-  cleanupAll()
-})
 
 // ============= 导出 =============
 export function useLogStream() {
