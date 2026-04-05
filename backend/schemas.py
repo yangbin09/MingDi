@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -60,8 +60,12 @@ class LogResponse(LogBase):
     output: str
     exit_code: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedLogResponse(BaseModel):
+    total: int
+    items: List[LogResponse]
 
 
 class EnvVarBase(BaseModel):

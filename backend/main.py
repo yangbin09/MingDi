@@ -11,7 +11,7 @@ import secrets
 
 from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings, AIProvider, AIModel, AIFeatureRouting, AIPromptTemplate, AISemanticCache, AIRAGContext, AIPermissionLevel, AIUsageStats, AIAuditLog
 from schemas import (
-    TaskCreate, TaskUpdate, TaskResponse, LogResponse,
+    TaskCreate, TaskUpdate, TaskResponse, LogResponse, PaginatedLogResponse,
     EnvVarCreate, EnvVarUpdate, EnvVarResponse,
     AlertConfigCreate, AlertConfigUpdate, AlertConfigResponse,
     SystemStats, ScratchpadRequest, ScratchpadResponse, ExportData,
@@ -482,7 +482,7 @@ def get_task_logs(task_id: int, db: Session = Depends(get_db)):
     return logs
 
 
-@app.get("/logs/search")
+@app.get("/logs/search", response_model=PaginatedLogResponse)
 def search_logs(
     keyword: Optional[str] = None,
     task_id: Optional[int] = None,
@@ -515,7 +515,11 @@ def search_logs(
     # Order and apply pagination at database level
     logs = query.order_by(Log.start_time.desc()).offset((page - 1) * size).limit(size).all()
 
-    return {"total": total, "items": logs}
+    # Explicitly convert to response schema (mode='json' for datetime serialization)
+    items = [LogResponse.model_validate(log).model_dump(mode='json') for log in logs]
+
+    # Use JSONResponse to ensure correct format
+    return JSONResponse(content={"total": total, "items": items})
 
 
 @app.get("/logs/{log_id}", response_model=LogResponse)
