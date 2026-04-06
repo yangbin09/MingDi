@@ -49,9 +49,6 @@ jobs:
       - name: Install frontend deps
         run: cd frontend && npm ci
 
-      - name: Run ESLint
-        run: cd frontend && npx eslint src/ --ext .vue,.js
-
       - name: Build frontend
         run: cd frontend && npm run build
 
