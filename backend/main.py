@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -38,6 +39,8 @@ from docker_runner import run_in_docker, extract_requirements_from_code, DOCKER_
 
 app = FastAPI(title="鸣镝 API", version="1.0.0")
 
+router = APIRouter()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 生产环境可限制为具体域名
@@ -45,6 +48,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(router, prefix="/api")
 
 # 挂载前端静态文件
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
@@ -335,13 +340,13 @@ def shutdown_event():
     stop_scheduler()
 
 
-@app.get("/")
+@router.get("/")
 def root():
     return {"message": "鸣镝 API is running"}
 
 
 # System Stats Endpoint
-@app.get("/system/stats", response_model=SystemStats)
+@router.get("/system/stats", response_model=SystemStats)
 def get_system_stats():
     """Get real-time system resource usage"""
     try:
@@ -376,14 +381,14 @@ def get_system_stats():
 
 
 # Task CRUD endpoints
-@app.get("/tasks", response_model=List[TaskResponse])
+@router.get("/tasks", response_model=List[TaskResponse])
 def list_tasks(db: Session = Depends(get_db)):
     tasks = db.query(Task).all()
     return tasks
 
 
 # Task execution history / timeline data
-@app.get("/tasks/timeline")
+@router.get("/tasks/timeline")
 def get_tasks_timeline(db: Session = Depends(get_db)):
     """Get task execution history for timeline visualization (last 24 hours)"""
     from datetime import datetime, timedelta
@@ -419,7 +424,7 @@ def get_tasks_timeline(db: Session = Depends(get_db)):
     return timeline
 
 
-@app.get("/tasks/{task_id}", response_model=TaskResponse)
+@router.get("/tasks/{task_id}", response_model=TaskResponse)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -427,7 +432,7 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
     return task
 
 
-@app.delete("/tasks/{task_id}")
+@router.delete("/tasks/{task_id}")
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -439,7 +444,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     return {"message": "Task deleted successfully"}
 
 
-@app.post("/tasks/{task_id}/run")
+@router.post("/tasks/{task_id}/run")
 def run_task_now(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -453,7 +458,7 @@ def run_task_now(task_id: int, db: Session = Depends(get_db)):
 
 
 # Script upload
-@app.post("/scripts/upload")
+@router.post("/scripts/upload")
 def upload_script(file: UploadFile = File(...)):
     if not file.filename.endswith(".py"):
         raise HTTPException(status_code=400, detail="Only .py files are allowed")
@@ -465,7 +470,7 @@ def upload_script(file: UploadFile = File(...)):
     return {"filename": file.filename, "path": file_path}
 
 
-@app.post("/scripts/upload-text")
+@router.post("/scripts/upload-text")
 def upload_script_text(filename: str, content: str):
     """Upload script as raw text content"""
     if not filename.endswith(".py"):
@@ -479,7 +484,7 @@ def upload_script_text(filename: str, content: str):
 
 
 # Log endpoints
-@app.get("/tasks/{task_id}/logs", response_model=List[LogResponse])
+@router.get("/tasks/{task_id}/logs", response_model=List[LogResponse])
 def get_task_logs(task_id: int, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -489,7 +494,7 @@ def get_task_logs(task_id: int, db: Session = Depends(get_db)):
     return logs
 
 
-@app.get("/logs/search", response_model=PaginatedLogResponse)
+@router.get("/logs/search", response_model=PaginatedLogResponse)
 def search_logs(
     keyword: Optional[str] = None,
     task_id: Optional[int] = None,
@@ -554,7 +559,7 @@ def search_logs(
     return JSONResponse(content={"total": total, "items": items})
 
 
-@app.get("/logs/{log_id}", response_model=LogResponse)
+@router.get("/logs/{log_id}", response_model=LogResponse)
 def get_log(log_id: int, db: Session = Depends(get_db)):
     log = db.query(Log).filter(Log.id == log_id).first()
     if not log:
@@ -562,7 +567,7 @@ def get_log(log_id: int, db: Session = Depends(get_db)):
     return log
 
 
-@app.delete("/logs/{log_id}")
+@router.delete("/logs/{log_id}")
 def delete_log(log_id: int, db: Session = Depends(get_db)):
     """Delete a specific log entry"""
     log = db.query(Log).filter(Log.id == log_id).first()
@@ -573,7 +578,7 @@ def delete_log(log_id: int, db: Session = Depends(get_db)):
     return {"message": "Log deleted successfully", "id": log_id}
 
 
-@app.delete("/logs")
+@router.delete("/logs")
 def batch_delete_logs(ids: List[int] = Body(...), db: Session = Depends(get_db)):
     """Batch delete log entries by IDs"""
     deleted_count = 0
@@ -586,7 +591,7 @@ def batch_delete_logs(ids: List[int] = Body(...), db: Session = Depends(get_db))
     return {"message": f"Deleted {deleted_count} logs", "count": deleted_count}
 
 
-@app.get("/tasks/{task_id}/logs/stream")
+@router.get("/tasks/{task_id}/logs/stream")
 def stream_logs(task_id: int):
     """SSE endpoint for real-time log streaming"""
     async def event_generator():
@@ -622,7 +627,7 @@ def stream_logs(task_id: int):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@app.get("/logs/{log_id}/download")
+@router.get("/logs/{log_id}/download")
 def download_log(log_id: int, db: Session = Depends(get_db)):
     """Download a single log as a .log file"""
     from fastapi.responses import Response
@@ -645,12 +650,12 @@ def download_log(log_id: int, db: Session = Depends(get_db)):
 
 # ============ Environment Variables ============
 
-@app.get("/env-vars", response_model=List[EnvVarResponse])
+@router.get("/env-vars", response_model=List[EnvVarResponse])
 def list_env_vars(db: Session = Depends(get_db)):
     return db.query(EnvVar).all()
 
 
-@app.post("/env-vars", response_model=EnvVarResponse)
+@router.post("/env-vars", response_model=EnvVarResponse)
 def create_env_var(env_data: EnvVarCreate, db: Session = Depends(get_db)):
     existing = db.query(EnvVar).filter(EnvVar.key == env_data.key).first()
     if existing:
@@ -668,7 +673,7 @@ def create_env_var(env_data: EnvVarCreate, db: Session = Depends(get_db)):
     return env_var
 
 
-@app.put("/env-vars/{env_id}", response_model=EnvVarResponse)
+@router.put("/env-vars/{env_id}", response_model=EnvVarResponse)
 def update_env_var(env_id: int, env_data: EnvVarUpdate, db: Session = Depends(get_db)):
     env_var = db.query(EnvVar).filter(EnvVar.id == env_id).first()
     if not env_var:
@@ -691,7 +696,7 @@ def update_env_var(env_id: int, env_data: EnvVarUpdate, db: Session = Depends(ge
     return env_var
 
 
-@app.delete("/env-vars/{env_id}")
+@router.delete("/env-vars/{env_id}")
 def delete_env_var(env_id: int, db: Session = Depends(get_db)):
     env_var = db.query(EnvVar).filter(EnvVar.id == env_id).first()
     if not env_var:
@@ -702,7 +707,7 @@ def delete_env_var(env_id: int, db: Session = Depends(get_db)):
     return {"message": "Environment variable deleted successfully"}
 
 
-@app.get("/env-vars/export")
+@router.get("/env-vars/export")
 def export_env_vars(db: Session = Depends(get_db)):
     """Export env vars as a dict for task execution"""
     env_vars = db.query(EnvVar).all()
@@ -711,12 +716,12 @@ def export_env_vars(db: Session = Depends(get_db)):
 
 # ============ Alert Configs ============
 
-@app.get("/alerts", response_model=List[AlertConfigResponse])
+@router.get("/alerts", response_model=List[AlertConfigResponse])
 def list_alerts(db: Session = Depends(get_db)):
     return db.query(AlertConfig).all()
 
 
-@app.post("/alerts", response_model=AlertConfigResponse)
+@router.post("/alerts", response_model=AlertConfigResponse)
 def create_alert(alert_data: AlertConfigCreate, db: Session = Depends(get_db)):
     alert = AlertConfig(
         name=alert_data.name,
@@ -731,7 +736,7 @@ def create_alert(alert_data: AlertConfigCreate, db: Session = Depends(get_db)):
     return alert
 
 
-@app.put("/alerts/{alert_id}", response_model=AlertConfigResponse)
+@router.put("/alerts/{alert_id}", response_model=AlertConfigResponse)
 def update_alert(alert_id: int, alert_data: AlertConfigUpdate, db: Session = Depends(get_db)):
     alert = db.query(AlertConfig).filter(AlertConfig.id == alert_id).first()
     if not alert:
@@ -753,7 +758,7 @@ def update_alert(alert_id: int, alert_data: AlertConfigUpdate, db: Session = Dep
     return alert
 
 
-@app.delete("/alerts/{alert_id}")
+@router.delete("/alerts/{alert_id}")
 def delete_alert(alert_id: int, db: Session = Depends(get_db)):
     alert = db.query(AlertConfig).filter(AlertConfig.id == alert_id).first()
     if not alert:
@@ -766,7 +771,7 @@ def delete_alert(alert_id: int, db: Session = Depends(get_db)):
 
 # ============ Scratchpad ============
 
-@app.post("/scratchpad", response_model=ScratchpadResponse)
+@router.post("/scratchpad", response_model=ScratchpadResponse)
 def execute_scratchpad(req: ScratchpadRequest, db: Session = Depends(get_db)):
     """Execute temporary Python code and return result"""
     import subprocess
@@ -820,7 +825,7 @@ def execute_scratchpad(req: ScratchpadRequest, db: Session = Depends(get_db)):
 
 # ============ Export / Import ============
 
-@app.get("/export")
+@router.get("/export")
 def export_config(db: Session = Depends(get_db)):
     """Export all configuration as JSON"""
     tasks = db.query(Task).all()
@@ -835,7 +840,7 @@ def export_config(db: Session = Depends(get_db)):
     )
 
 
-@app.post("/import")
+@router.post("/import")
 def import_config(data: ExportData, db: Session = Depends(get_db)):
     """Import configuration from JSON"""
     imported_tasks = 0
@@ -925,7 +930,7 @@ def set_setting(db: Session, key: str, value: str, description: str = None) -> N
     db.commit()
 
 
-@app.get("/system/settings", response_model=SystemSettingsResponse)
+@router.get("/system/settings", response_model=SystemSettingsResponse)
 def get_system_settings(db: Session = Depends(get_db)):
     """Get all system settings (AI config)"""
     return SystemSettingsResponse(
@@ -935,7 +940,7 @@ def get_system_settings(db: Session = Depends(get_db)):
     )
 
 
-@app.put("/system/settings", response_model=SystemSettingsResponse)
+@router.put("/system/settings", response_model=SystemSettingsResponse)
 def update_system_settings(settings: SystemSettingsUpdate, db: Session = Depends(get_db)):
     """Update system settings (AI config)"""
     if settings.minimax_api_key is not None:
@@ -956,7 +961,7 @@ def update_system_settings(settings: SystemSettingsUpdate, db: Session = Depends
     )
 
 
-@app.post("/system/settings/test-ai")
+@router.post("/system/settings/test-ai")
 def test_ai_connection(db: Session = Depends(get_db)):
     """Test AI API connection"""
     api_key = get_setting(db, "minimax_api_key")
@@ -984,28 +989,28 @@ def test_ai_connection(db: Session = Depends(get_db)):
 
 # ============ AI Features ============
 
-@app.post("/ai/generate-script", response_model=AIScriptResponse)
+@router.post("/ai/generate-script", response_model=AIScriptResponse)
 def ai_generate_script(req: AIScriptRequest):
     """Generate Python script from natural language description (Text-to-Script)"""
     code = ai_service.generate_script(req.description)
     return AIScriptResponse(code=code, used_ai=bool(ai_service.api_key))
 
 
-@app.post("/ai/diagnose-error", response_model=AIDiagnoseResponse)
+@router.post("/ai/diagnose-error", response_model=AIDiagnoseResponse)
 def ai_diagnose_error(req: AIDiagnoseRequest):
     """AI-powered error diagnosis and fix suggestions (Auto-Fix)"""
     diagnosis = ai_service.diagnose_error(req.error_traceback, req.script_content)
     return AIDiagnoseResponse(diagnosis=diagnosis, used_ai=bool(ai_service.api_key))
 
 
-@app.post("/ai/code-review", response_model=AICodeReviewResponse)
+@router.post("/ai/code-review", response_model=AICodeReviewResponse)
 def ai_code_review(req: AICodeReviewRequest):
     """AI code review for performance and best practices (Code Simplifier)"""
     review = ai_service.code_review(req.code)
     return AICodeReviewResponse(review=review, used_ai=bool(ai_service.api_key))
 
 
-@app.post("/ai/nlp-to-cron", response_model=AINLPCronResponse)
+@router.post("/ai/nlp-to-cron", response_model=AINLPCronResponse)
 def ai_nlp_to_cron(req: AINLPCronRequest):
     """Convert natural language to Cron expression (NLP to Cron)"""
     result = ai_service.nlp_to_cron(req.natural_language)
@@ -1022,28 +1027,28 @@ def ai_nlp_to_cron(req: AINLPCronRequest):
     )
 
 
-@app.post("/ai/summarize-log", response_model=AISummarizeLogResponse)
+@router.post("/ai/summarize-log", response_model=AISummarizeLogResponse)
 def ai_summarize_log(req: AISummarizeLogRequest):
     """AI-powered log summarization (Log Summarization)"""
     summary = ai_service.summarize_log(req.log_content)
     return AISummarizeLogResponse(summary=summary, used_ai=bool(ai_service.api_key))
 
 
-@app.post("/ai/generate-doc", response_model=AIGenerateDocResponse)
+@router.post("/ai/generate-doc", response_model=AIGenerateDocResponse)
 def ai_generate_doc(req: AIGenerateDocRequest):
     """Auto-generate documentation from Python code (Auto-Doc)"""
     doc = ai_service.generate_doc(req.code)
     return AIGenerateDocResponse(doc=doc, used_ai=bool(ai_service.api_key))
 
 
-@app.post("/ai/humanize-alert", response_model=AIHumanizeAlertResponse)
+@router.post("/ai/humanize-alert", response_model=AIHumanizeAlertResponse)
 def ai_humanize_alert(req: AIHumanizeAlertRequest):
     """Convert technical alerts to human-readable messages (AI Alert)"""
     message = ai_service.humanize_alert(req.alert_type, req.task_name, req.error_info)
     return AIHumanizeAlertResponse(message=message, used_ai=bool(ai_service.api_key))
 
 
-@app.get("/ai/capabilities")
+@router.get("/ai/capabilities")
 def ai_capabilities():
     """Check AI service capabilities and status"""
     return {
@@ -1064,7 +1069,7 @@ def ai_capabilities():
 
 # ============ Webhook Trigger System ============
 
-@app.get("/webhook/{token}")
+@router.get("/webhook/{token}")
 def trigger_webhook(token: str, db: Session = Depends(get_db)):
     """Trigger task execution via webhook (public endpoint, no auth required)"""
     # Find task by webhook token
@@ -1093,7 +1098,7 @@ def trigger_webhook(token: str, db: Session = Depends(get_db)):
     }
 
 
-@app.post("/webhook/{token}")
+@router.post("/webhook/{token}")
 def trigger_webhook_post(token: str, request: WebhookTriggerRequest, db: Session = Depends(get_db)):
     """Trigger task execution via webhook with payload"""
     task = db.query(Task).filter(Task.webhook_token == token).first()
@@ -1134,7 +1139,7 @@ def trigger_webhook_post(token: str, request: WebhookTriggerRequest, db: Session
     }
 
 
-@app.post("/tasks/{task_id}/enable-webhook")
+@router.post("/tasks/{task_id}/enable-webhook")
 def enable_webhook(task_id: int, db: Session = Depends(get_db)):
     """Enable webhook for a task and generate token"""
     task = db.query(Task).filter(Task.id == task_id).first()
@@ -1158,7 +1163,7 @@ def enable_webhook(task_id: int, db: Session = Depends(get_db)):
     }
 
 
-@app.post("/tasks/{task_id}/disable-webhook")
+@router.post("/tasks/{task_id}/disable-webhook")
 def disable_webhook(task_id: int, db: Session = Depends(get_db)):
     """Disable webhook for a task"""
     task = db.query(Task).filter(Task.id == task_id).first()
@@ -1171,7 +1176,7 @@ def disable_webhook(task_id: int, db: Session = Depends(get_db)):
     return {"success": True, "message": "Webhook disabled"}
 
 
-@app.get("/tasks/{task_id}/webhook-info")
+@router.get("/tasks/{task_id}/webhook-info")
 def get_webhook_info(task_id: int, db: Session = Depends(get_db)):
     """Get webhook URL and status for a task"""
     task = db.query(Task).filter(Task.id == task_id).first()
@@ -1189,14 +1194,14 @@ def get_webhook_info(task_id: int, db: Session = Depends(get_db)):
 
 # ============ Node Flow (Visual DAG Editor) ============
 
-@app.get("/node-flows", response_model=List[NodeFlowResponse])
+@router.get("/node-flows", response_model=List[NodeFlowResponse])
 def list_node_flows(db: Session = Depends(get_db)):
     """List all node flows"""
     flows = db.query(NodeFlow).all()
     return flows
 
 
-@app.get("/node-flows/{flow_id}", response_model=NodeFlowResponse)
+@router.get("/node-flows/{flow_id}", response_model=NodeFlowResponse)
 def get_node_flow(flow_id: int, db: Session = Depends(get_db)):
     """Get a specific node flow"""
     flow = db.query(NodeFlow).filter(NodeFlow.id == flow_id).first()
@@ -1205,7 +1210,7 @@ def get_node_flow(flow_id: int, db: Session = Depends(get_db)):
     return flow
 
 
-@app.post("/node-flows", response_model=NodeFlowResponse)
+@router.post("/node-flows", response_model=NodeFlowResponse)
 def create_node_flow(flow_data: NodeFlowCreate, db: Session = Depends(get_db)):
     """Create a new node flow"""
     flow = NodeFlow(
@@ -1221,7 +1226,7 @@ def create_node_flow(flow_data: NodeFlowCreate, db: Session = Depends(get_db)):
     return flow
 
 
-@app.put("/node-flows/{flow_id}", response_model=NodeFlowResponse)
+@router.put("/node-flows/{flow_id}", response_model=NodeFlowResponse)
 def update_node_flow(flow_id: int, flow_data: NodeFlowUpdate, db: Session = Depends(get_db)):
     """Update a node flow"""
     flow = db.query(NodeFlow).filter(NodeFlow.id == flow_id).first()
@@ -1244,7 +1249,7 @@ def update_node_flow(flow_id: int, flow_data: NodeFlowUpdate, db: Session = Depe
     return flow
 
 
-@app.delete("/node-flows/{flow_id}")
+@router.delete("/node-flows/{flow_id}")
 def delete_node_flow(flow_id: int, db: Session = Depends(get_db)):
     """Delete a node flow"""
     flow = db.query(NodeFlow).filter(NodeFlow.id == flow_id).first()
@@ -1256,7 +1261,7 @@ def delete_node_flow(flow_id: int, db: Session = Depends(get_db)):
     return {"message": "Node flow deleted successfully"}
 
 
-@app.post("/node-flows/{flow_id}/execute")
+@router.post("/node-flows/{flow_id}/execute")
 def execute_node_flow(flow_id: int, db: Session = Depends(get_db)):
     """Execute a node flow (run all tasks in topological order)"""
     import json
@@ -1329,7 +1334,7 @@ def execute_node_flow(flow_id: int, db: Session = Depends(get_db)):
 
 # ============ Docker Sandbox Runner ============
 
-@app.post("/docker/run", response_model=DockerRunResponse)
+@router.post("/docker/run", response_model=DockerRunResponse)
 def docker_sandbox_run(req: DockerRunRequest, db: Session = Depends(get_db)):
     """Run Python code in an isolated Docker container"""
     if not DOCKER_AVAILABLE:
@@ -1363,7 +1368,7 @@ def docker_sandbox_run(req: DockerRunRequest, db: Session = Depends(get_db)):
     )
 
 
-@app.post("/docker/extract-requirements")
+@router.post("/docker/extract-requirements")
 def docker_extract_requirements(code: str = Body(..., media_type="text/plain")):
     """Extract pip requirements from Python code"""
     requirements = extract_requirements_from_code(code)
@@ -1372,7 +1377,7 @@ def docker_extract_requirements(code: str = Body(..., media_type="text/plain")):
 
 # ============ Updated Task Endpoints with Phase 8 Fields ============
 
-@app.post("/tasks", response_model=TaskResponse)
+@router.post("/tasks", response_model=TaskResponse)
 def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
     task = Task(
         name=task_data.name,
@@ -1399,7 +1404,7 @@ def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
     return task
 
 
-@app.put("/tasks/{task_id}", response_model=TaskResponse)
+@router.put("/tasks/{task_id}", response_model=TaskResponse)
 def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends(get_db)):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -1445,13 +1450,13 @@ def update_task(task_id: int, task_data: TaskUpdate, db: Session = Depends(get_d
 
 # ============ AI Hub API Endpoints ============
 
-@app.get("/ai/providers", response_model=List[AIProviderResponse])
+@router.get("/ai/providers", response_model=List[AIProviderResponse])
 def list_ai_providers(db: Session = Depends(get_db)):
     """List all AI providers"""
     return db.query(AIProvider).order_by(AIProvider.priority).all()
 
 
-@app.post("/ai/providers", response_model=AIProviderResponse)
+@router.post("/ai/providers", response_model=AIProviderResponse)
 def create_ai_provider(provider_data: AIProviderCreate, db: Session = Depends(get_db)):
     """Create a new AI provider"""
     provider = AIProvider(
@@ -1471,7 +1476,7 @@ def create_ai_provider(provider_data: AIProviderCreate, db: Session = Depends(ge
     return provider
 
 
-@app.put("/ai/providers/{provider_id}", response_model=AIProviderResponse)
+@router.put("/ai/providers/{provider_id}", response_model=AIProviderResponse)
 def update_ai_provider(provider_id: int, provider_data: AIProviderUpdate, db: Session = Depends(get_db)):
     """Update an AI provider"""
     provider = db.query(AIProvider).filter(AIProvider.id == provider_id).first()
@@ -1486,7 +1491,7 @@ def update_ai_provider(provider_id: int, provider_data: AIProviderUpdate, db: Se
     return provider
 
 
-@app.delete("/ai/providers/{provider_id}")
+@router.delete("/ai/providers/{provider_id}")
 def delete_ai_provider(provider_id: int, db: Session = Depends(get_db)):
     """Delete an AI provider"""
     provider = db.query(AIProvider).filter(AIProvider.id == provider_id).first()
@@ -1498,13 +1503,13 @@ def delete_ai_provider(provider_id: int, db: Session = Depends(get_db)):
     return {"message": "AI Provider deleted successfully"}
 
 
-@app.get("/ai/models", response_model=List[AIModelResponse])
+@router.get("/ai/models", response_model=List[AIModelResponse])
 def list_ai_models(db: Session = Depends(get_db)):
     """List all AI models"""
     return db.query(AIModel).all()
 
 
-@app.post("/ai/models", response_model=AIModelResponse)
+@router.post("/ai/models", response_model=AIModelResponse)
 def create_ai_model(model_data: AIModelCreate, db: Session = Depends(get_db)):
     """Create a new AI model"""
     model = AIModel(
@@ -1523,7 +1528,7 @@ def create_ai_model(model_data: AIModelCreate, db: Session = Depends(get_db)):
     return model
 
 
-@app.put("/ai/models/{model_id}", response_model=AIModelResponse)
+@router.put("/ai/models/{model_id}", response_model=AIModelResponse)
 def update_ai_model(model_id: int, model_data: AIModelUpdate, db: Session = Depends(get_db)):
     """Update an AI model"""
     model = db.query(AIModel).filter(AIModel.id == model_id).first()
@@ -1538,7 +1543,7 @@ def update_ai_model(model_id: int, model_data: AIModelUpdate, db: Session = Depe
     return model
 
 
-@app.delete("/ai/models/{model_id}")
+@router.delete("/ai/models/{model_id}")
 def delete_ai_model(model_id: int, db: Session = Depends(get_db)):
     """Delete an AI model"""
     model = db.query(AIModel).filter(AIModel.id == model_id).first()
@@ -1550,13 +1555,13 @@ def delete_ai_model(model_id: int, db: Session = Depends(get_db)):
     return {"message": "AI Model deleted successfully"}
 
 
-@app.get("/ai/feature-routing", response_model=List[AIFeatureRoutingResponse])
+@router.get("/ai/feature-routing", response_model=List[AIFeatureRoutingResponse])
 def list_feature_routing(db: Session = Depends(get_db)):
     """List all feature routing configurations"""
     return db.query(AIFeatureRouting).all()
 
 
-@app.post("/ai/feature-routing", response_model=AIFeatureRoutingResponse)
+@router.post("/ai/feature-routing", response_model=AIFeatureRoutingResponse)
 def create_feature_routing(routing_data: AIFeatureRoutingCreate, db: Session = Depends(get_db)):
     """Create a new feature routing configuration"""
     routing = AIFeatureRouting(
@@ -1572,7 +1577,7 @@ def create_feature_routing(routing_data: AIFeatureRoutingCreate, db: Session = D
     return routing
 
 
-@app.put("/ai/feature-routing/{routing_id}", response_model=AIFeatureRoutingResponse)
+@router.put("/ai/feature-routing/{routing_id}", response_model=AIFeatureRoutingResponse)
 def update_feature_routing(routing_id: int, routing_data: AIFeatureRoutingUpdate, db: Session = Depends(get_db)):
     """Update a feature routing configuration"""
     routing = db.query(AIFeatureRouting).filter(AIFeatureRouting.id == routing_id).first()
@@ -1587,7 +1592,7 @@ def update_feature_routing(routing_id: int, routing_data: AIFeatureRoutingUpdate
     return routing
 
 
-@app.delete("/ai/feature-routing/{routing_id}")
+@router.delete("/ai/feature-routing/{routing_id}")
 def delete_feature_routing(routing_id: int, db: Session = Depends(get_db)):
     """Delete a feature routing configuration"""
     routing = db.query(AIFeatureRouting).filter(AIFeatureRouting.id == routing_id).first()
@@ -1599,13 +1604,13 @@ def delete_feature_routing(routing_id: int, db: Session = Depends(get_db)):
     return {"message": "Feature routing deleted successfully"}
 
 
-@app.get("/ai/prompt-templates", response_model=List[AIPromptTemplateResponse])
+@router.get("/ai/prompt-templates", response_model=List[AIPromptTemplateResponse])
 def list_prompt_templates(db: Session = Depends(get_db)):
     """List all prompt templates"""
     return db.query(AIPromptTemplate).all()
 
 
-@app.post("/ai/prompt-templates", response_model=AIPromptTemplateResponse)
+@router.post("/ai/prompt-templates", response_model=AIPromptTemplateResponse)
 def create_prompt_template(template_data: AIPromptTemplateCreate, db: Session = Depends(get_db)):
     """Create a new prompt template"""
     template = AIPromptTemplate(
@@ -1625,7 +1630,7 @@ def create_prompt_template(template_data: AIPromptTemplateCreate, db: Session = 
     return template
 
 
-@app.put("/ai/prompt-templates/{template_id}", response_model=AIPromptTemplateResponse)
+@router.put("/ai/prompt-templates/{template_id}", response_model=AIPromptTemplateResponse)
 def update_prompt_template(template_id: int, template_data: AIPromptTemplateUpdate, db: Session = Depends(get_db)):
     """Update a prompt template"""
     template = db.query(AIPromptTemplate).filter(AIPromptTemplate.id == template_id).first()
@@ -1640,7 +1645,7 @@ def update_prompt_template(template_id: int, template_data: AIPromptTemplateUpda
     return template
 
 
-@app.delete("/ai/prompt-templates/{template_id}")
+@router.delete("/ai/prompt-templates/{template_id}")
 def delete_prompt_template(template_id: int, db: Session = Depends(get_db)):
     """Delete a prompt template"""
     template = db.query(AIPromptTemplate).filter(AIPromptTemplate.id == template_id).first()
@@ -1652,13 +1657,13 @@ def delete_prompt_template(template_id: int, db: Session = Depends(get_db)):
     return {"message": "Prompt template deleted successfully"}
 
 
-@app.get("/ai/rag-context", response_model=List[AIRAGContextResponse])
+@router.get("/ai/rag-context", response_model=List[AIRAGContextResponse])
 def list_rag_contexts(db: Session = Depends(get_db)):
     """List all RAG contexts"""
     return db.query(AIRAGContext).all()
 
 
-@app.post("/ai/rag-context", response_model=AIRAGContextResponse)
+@router.post("/ai/rag-context", response_model=AIRAGContextResponse)
 def create_rag_context(rag_data: AIRAGContextCreate, db: Session = Depends(get_db)):
     """Create a new RAG context"""
     rag = AIRAGContext(
@@ -1674,7 +1679,7 @@ def create_rag_context(rag_data: AIRAGContextCreate, db: Session = Depends(get_d
     return rag
 
 
-@app.put("/ai/rag-context/{rag_id}", response_model=AIRAGContextResponse)
+@router.put("/ai/rag-context/{rag_id}", response_model=AIRAGContextResponse)
 def update_rag_context(rag_id: int, rag_data: AIRAGContextUpdate, db: Session = Depends(get_db)):
     """Update a RAG context"""
     rag = db.query(AIRAGContext).filter(AIRAGContext.id == rag_id).first()
@@ -1689,7 +1694,7 @@ def update_rag_context(rag_id: int, rag_data: AIRAGContextUpdate, db: Session = 
     return rag
 
 
-@app.delete("/ai/rag-context/{rag_id}")
+@router.delete("/ai/rag-context/{rag_id}")
 def delete_rag_context(rag_id: int, db: Session = Depends(get_db)):
     """Delete a RAG context"""
     rag = db.query(AIRAGContext).filter(AIRAGContext.id == rag_id).first()
@@ -1701,13 +1706,13 @@ def delete_rag_context(rag_id: int, db: Session = Depends(get_db)):
     return {"message": "RAG context deleted successfully"}
 
 
-@app.get("/ai/permissions", response_model=List[AIPermissionLevelResponse])
+@router.get("/ai/permissions", response_model=List[AIPermissionLevelResponse])
 def list_permissions(db: Session = Depends(get_db)):
     """List all AI permission levels"""
     return db.query(AIPermissionLevel).all()
 
 
-@app.post("/ai/permissions", response_model=AIPermissionLevelResponse)
+@router.post("/ai/permissions", response_model=AIPermissionLevelResponse)
 def create_permission(perm_data: AIPermissionLevelCreate, db: Session = Depends(get_db)):
     """Create a new AI permission level"""
     perm = AIPermissionLevel(
@@ -1723,7 +1728,7 @@ def create_permission(perm_data: AIPermissionLevelCreate, db: Session = Depends(
     return perm
 
 
-@app.put("/ai/permissions/{perm_id}", response_model=AIPermissionLevelResponse)
+@router.put("/ai/permissions/{perm_id}", response_model=AIPermissionLevelResponse)
 def update_permission(perm_id: int, perm_data: AIPermissionLevelUpdate, db: Session = Depends(get_db)):
     """Update an AI permission level"""
     perm = db.query(AIPermissionLevel).filter(AIPermissionLevel.id == perm_id).first()
@@ -1738,7 +1743,7 @@ def update_permission(perm_id: int, perm_data: AIPermissionLevelUpdate, db: Sess
     return perm
 
 
-@app.delete("/ai/permissions/{perm_id}")
+@router.delete("/ai/permissions/{perm_id}")
 def delete_permission(perm_id: int, db: Session = Depends(get_db)):
     """Delete an AI permission level"""
     perm = db.query(AIPermissionLevel).filter(AIPermissionLevel.id == perm_id).first()
@@ -1750,7 +1755,7 @@ def delete_permission(perm_id: int, db: Session = Depends(get_db)):
     return {"message": "Permission level deleted successfully"}
 
 
-@app.get("/ai/usage-stats", response_model=AIUsageStatsResponse)
+@router.get("/ai/usage-stats", response_model=AIUsageStatsResponse)
 def get_usage_stats(db: Session = Depends(get_db)):
     """Get AI usage statistics for today"""
     from datetime import datetime
@@ -1771,7 +1776,7 @@ def get_usage_stats(db: Session = Depends(get_db)):
     )
 
 
-@app.get("/ai/audit-logs", response_model=List[AIAuditLogResponse])
+@router.get("/ai/audit-logs", response_model=List[AIAuditLogResponse])
 def list_audit_logs(db: Session = Depends(get_db)):
     """List AI audit logs"""
     return db.query(AIAuditLog).order_by(AIAuditLog.created_at.desc()).limit(100).all()

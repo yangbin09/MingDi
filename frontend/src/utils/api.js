@@ -4,7 +4,7 @@
  */
 import axios from 'axios'
 
-const API_BASE_URL = ''  // 使用相对路径，同源请求
+const API_BASE_URL = '/api'
 
 // Create axios instance with default config
 const apiClient = axios.create({
