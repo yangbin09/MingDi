@@ -48,10 +48,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 挂载前端静态文件
+# 挂载前端静态文件（仅当 frontend/dist 存在时）
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
-if os.path.exists(FRONTEND_DIST):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
 
 SCRIPTS_DIR = "./scripts"
 
@@ -1787,6 +1785,10 @@ def list_audit_logs(db: Session = Depends(get_db)):
 
 # 在所有路由装饰器定义之后，再 include_router
 app.include_router(router, prefix="/api")
+
+# 在 API 路由挂载之后，再挂载前端静态文件（确保 API 路由优先）
+if os.path.exists(FRONTEND_DIST):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
 
 
 if __name__ == "__main__":
