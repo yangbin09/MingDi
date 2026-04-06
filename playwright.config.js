@@ -1,15 +1,17 @@
-import { defineConfig, devices } from '@playwright/test'
+const { defineConfig, devices } = require('@playwright/test')
+const path = require('path')
 
-export default defineConfig({
+const testOutputDir = path.join(__dirname, 'test-output-local')
+
+module.exports = defineConfig({
   testDir: './e2e/tests',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : undefined,
+  retries: 1,
+  workers: 1,
   reporter: [
-    ['html', { outputFolder: 'e2e/reports/html' }],
-    ['json', { outputFile: 'e2e/reports/results.json' }],
-    ['list']
+    ['html', { outputFolder: path.join(testOutputDir, 'html-report') }],
+    ['json', { outputFile: path.join(testOutputDir, 'raw-results', 'results.json') }]
   ],
   use: {
     baseURL: 'http://localhost:5173',
@@ -24,14 +26,16 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         channel: 'chrome',
         executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        headless: true,
       },
     },
   ],
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120000,
     cwd: './frontend',
   },
+  outputDir: testOutputDir,
 })

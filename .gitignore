@@ -33,3 +33,10 @@ logs/
 
 # Uvicorn
 *.pid
+
+# Test Output
+test-output-local/
+e2e/reports/
+e2e/results/
+playwright-report/
+test-results/
