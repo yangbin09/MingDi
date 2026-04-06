@@ -11,5 +11,15 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    // 禁用缓存确保每次构建都生成新文件
+    cache: false,
+    rollupOptions: {
+      output: {
+        // 使用更明确的 chunk 文件名
+        manualChunks: undefined
+      }
+    }
   }
 })
