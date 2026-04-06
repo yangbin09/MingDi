@@ -245,7 +245,7 @@
                 <p class="text-sm" style="color: var(--text-muted);">下载所有任务、环境变量和告警配置</p>
               </div>
             </div>
-            <el-button type="primary" @click="handleExport" class="w-full mt-4">
+            <el-button type="primary" @click="handleExport" class="w-full mt-4" :loading="exporting">
               <el-icon><Download /></el-icon>
               导出 JSON 文件
             </el-button>
@@ -263,7 +263,7 @@
               </div>
             </div>
             <input type="file" accept=".json" @change="handleImport" ref="importFileRef" class="hidden" />
-            <el-button type="success" @click="$refs.importFileRef.click()" class="w-full mt-4">
+            <el-button type="success" @click="$refs.importFileRef.click()" class="w-full mt-4" :loading="importing">
               <el-icon><Upload /></el-icon>
               选择 JSON 文件导入
             </el-button>
@@ -334,17 +334,26 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
 import {
   Key, Bell, MagicStick, Upload, Plus, Edit, Delete, Download
 } from '@element-plus/icons-vue'
+import { useEnvVars } from '../composables/useEnvVars.ts'
+import type { EnvVarFormData } from '../composables/useEnvVars.ts'
+import { useAlerts } from '../composables/useAlerts.ts'
+import type { AlertFormData } from '../composables/useAlerts.ts'
+import { useAISettings } from '../composables/useAISettings.ts'
+import { useSettingsExport } from '../composables/useSettingsExport.ts'
 
-const api = axios.create({ baseURL: 'http://localhost:8000/api' })
+// ============= Composable 使用 =============
+const { envVars, fetchEnvVars, createEnvVar, updateEnvVar, deleteEnvVar } = useEnvVars()
+const { alerts, fetchAlerts, createAlert, updateAlert, deleteAlert, toggleAlert } = useAlerts()
+const { aiSettings, aiSettingsSaved, aiTesting, aiTestResult, fetchAISettings, saveAISettings, testAIConnection } = useAISettings()
+const { exporting, importing, exportConfig, handleImportFile } = useSettingsExport()
 
-// 判断是否为暗色主题
+// ============= 主题判断 =============
 const isDarkTheme = computed(() => {
   return document.documentElement.classList.contains('dark') ||
     ['darcula', 'xuanmo', 'anying', 'gruvbox'].includes(
@@ -355,55 +364,17 @@ const isDarkTheme = computed(() => {
 const activeTab = ref('env')
 const importFileRef = ref(null)
 
-const envVars = ref([])
-const alerts = ref([])
-
+// ============= 环境变量表单 =============
 const showEnvModal = ref(false)
-const showAlertModal = ref(false)
-const editingEnv = ref(null)
-const editingAlert = ref(null)
-const alertEvents = ref(['failed', 'timeout'])
-
-const envForm = reactive({ key: '', value: '', description: '', is_secret: false })
-const alertForm = reactive({ name: '', webhook_url: '', events: 'failed,timeout', is_active: true, ai_humanize: false })
-
-const aiSettings = reactive({
-  minimax_api_key: '',
-  minimax_group_id: '',
-  ai_enabled: false
+const editingEnv = ref<any>(null)
+const envForm = reactive<EnvVarFormData>({
+  key: '',
+  value: '',
+  description: '',
+  is_secret: false
 })
-const aiSettingsSaved = ref(false)
-const aiTesting = ref(false)
-const aiTestResult = ref(null)
 
-const aiFeatures = [
-  { name: 'Text-to-Script', desc: '自然语言生成 Python 脚本', color: 'var(--color-primary)' },
-  { name: 'AI 代码审查', desc: '代码性能与安全检查', color: 'var(--color-purple)' },
-  { name: '错误诊断', desc: '智能错误分析与修复建议', color: 'var(--color-warning)' },
-  { name: 'NLP to Cron', desc: '自然语言转 Cron 表达式', color: 'var(--color-success)' },
-  { name: '日志摘要', desc: 'AI 提炼日志关键信息', color: 'var(--color-cyan)' },
-  { name: '拟人化告警', desc: '友好的告警消息推送', color: 'var(--color-blue)' }
-]
-
-async function fetchEnvVars() {
-  try {
-    const res = await api.get('/env-vars')
-    envVars.value = res.data
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-async function fetchAlerts() {
-  try {
-    const res = await api.get('/alerts')
-    alerts.value = res.data
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-function openEnvModal(env = null) {
+function openEnvModal(env: any = null) {
   editingEnv.value = env
   if (env) {
     envForm.key = env.key
@@ -425,30 +396,22 @@ function closeEnvModal() {
 }
 
 async function handleSaveEnv() {
-  try {
-    if (editingEnv.value) {
-      await api.put(`/env-vars/${editingEnv.value.id}`, envForm)
-    } else {
-      await api.post('/env-vars', envForm)
-    }
-    closeEnvModal()
-    fetchEnvVars()
-    ElMessage.success('保存成功')
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  if (editingEnv.value) {
+    await updateEnvVar(editingEnv.value.id, envForm)
+  } else {
+    await createEnvVar(envForm)
   }
+  closeEnvModal()
 }
 
-async function handleDeleteEnv(env) {
+async function handleDeleteEnv(env: any) {
   try {
     await ElMessageBox.confirm(`确定删除变量 "${env.key}" 吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await api.delete(`/env-vars/${env.id}`)
-    fetchEnvVars()
-    ElMessage.success('删除成功')
+    await deleteEnvVar(env.id)
   } catch (e) {
     if (e !== 'cancel') {
       console.error(e)
@@ -456,14 +419,26 @@ async function handleDeleteEnv(env) {
   }
 }
 
-function openAlertModal(alert = null) {
+// ============= 告警表单 =============
+const showAlertModal = ref(false)
+const editingAlert = ref<any>(null)
+const alertEvents = ref(['failed', 'timeout'])
+const alertForm = reactive<AlertFormData>({
+  name: '',
+  webhook_url: '',
+  events: 'failed,timeout',
+  is_active: true,
+  ai_humanize: false
+})
+
+function openAlertModal(alert: any = null) {
   editingAlert.value = alert
   if (alert) {
     alertForm.name = alert.name
     alertForm.webhook_url = alert.webhook_url
     alertForm.is_active = alert.is_active
     alertForm.ai_humanize = alert.ai_humanize || false
-    alertEvents.value = alert.events.split(',').map(e => e.trim())
+    alertEvents.value = alert.events.split(',').map((e: string) => e.trim())
   } else {
     alertForm.name = ''
     alertForm.webhook_url = ''
@@ -481,30 +456,22 @@ function closeAlertModal() {
 
 async function handleSaveAlert() {
   alertForm.events = alertEvents.value.join(',')
-  try {
-    if (editingAlert.value) {
-      await api.put(`/alerts/${editingAlert.value.id}`, alertForm)
-    } else {
-      await api.post('/alerts', alertForm)
-    }
-    closeAlertModal()
-    fetchAlerts()
-    ElMessage.success('保存成功')
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
+  if (editingAlert.value) {
+    await updateAlert(editingAlert.value.id, alertForm)
+  } else {
+    await createAlert(alertForm)
   }
+  closeAlertModal()
 }
 
-async function handleDeleteAlert(alert) {
+async function handleDeleteAlert(alert: any) {
   try {
     await ElMessageBox.confirm(`确定删除告警 "${alert.name}" 吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await api.delete(`/alerts/${alert.id}`)
-    fetchAlerts()
-    ElMessage.success('删除成功')
+    await deleteAlert(alert.id)
   } catch (e) {
     if (e !== 'cancel') {
       console.error(e)
@@ -512,95 +479,40 @@ async function handleDeleteAlert(alert) {
   }
 }
 
-async function handleToggleAlert(alert) {
-  try {
-    await api.put(`/alerts/${alert.id}`, { is_active: !alert.is_active })
-    fetchAlerts()
-    ElMessage.success(alert.is_active ? '告警已禁用' : '告警已启用')
-  } catch (e) {
-    ElMessage.error('操作失败')
-  }
+async function handleToggleAlert(alert: any) {
+  await toggleAlert(alert)
 }
 
-async function handleExport() {
-  try {
-    const res = await api.get('/export')
-    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `pycron-config-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
-  } catch (e) {
-    ElMessage.error('导出失败: ' + e.message)
-  }
-}
-
-async function handleImport(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  try {
-    const text = await file.text()
-    const data = JSON.parse(text)
-    const res = await api.post('/import', data)
-    ElMessage.success(`导入成功！任务: ${res.data.tasks_imported}, 变量: ${res.data.env_vars_imported}, 告警: ${res.data.alerts_imported}`)
-    fetchEnvVars()
-    fetchAlerts()
-  } catch (e) {
-    ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message))
-  }
-  event.target.value = ''
-}
-
-async function fetchAISettings() {
-  try {
-    const res = await api.get('/system/settings')
-    aiSettings.minimax_api_key = res.data.minimax_api_key || ''
-    aiSettings.minimax_group_id = res.data.minimax_group_id || ''
-    aiSettings.ai_enabled = res.data.ai_enabled || false
-  } catch (e) {
-    console.error(e)
-  }
-}
-
+// ============= AI 功能 =============
 async function handleSaveAI() {
-  try {
-    await api.put('/system/settings', {
-      minimax_api_key: aiSettings.minimax_api_key,
-      minimax_group_id: aiSettings.minimax_group_id
-    })
-    aiSettingsSaved.value = true
-    aiSettings.ai_enabled = !!(aiSettings.minimax_api_key && aiSettings.minimax_group_id)
-    setTimeout(() => { aiSettingsSaved.value = false }, 2000)
-    ElMessage.success('AI 配置已保存')
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  await saveAISettings()
 }
 
 async function handleTestAI() {
-  aiTesting.value = true
-  aiTestResult.value = null
-  try {
-    await api.put('/system/settings', {
-      minimax_api_key: aiSettings.minimax_api_key,
-      minimax_group_id: aiSettings.minimax_group_id
-    })
-    const res = await api.post('/system/settings/test-ai')
-    aiTestResult.value = res.data
-    aiSettings.ai_enabled = res.data.success
-    if (res.data.success) {
-      ElMessage.success('AI 连接测试成功')
-    }
-  } catch (e) {
-    aiTestResult.value = { success: false, message: '测试失败: ' + (e.response?.data?.detail || e.message) }
-  } finally {
-    aiTesting.value = false
-  }
+  await testAIConnection()
 }
 
+const aiFeatures = [
+  { name: 'Text-to-Script', desc: '自然语言生成 Python 脚本', color: 'var(--color-primary)' },
+  { name: 'AI 代码审查', desc: '代码性能与安全检查', color: 'var(--color-purple)' },
+  { name: '错误诊断', desc: '智能错误分析与修复建议', color: 'var(--color-warning)' },
+  { name: 'NLP to Cron', desc: '自然语言转 Cron 表达式', color: 'var(--color-success)' },
+  { name: '日志摘要', desc: 'AI 提炼日志关键信息', color: 'var(--color-cyan)' },
+  { name: '拟人化告警', desc: '友好的告警消息推送', color: 'var(--color-blue)' }
+]
+
+// ============= 导入导出 =============
+async function handleExport() {
+  await exportConfig()
+}
+
+async function handleImport(event: Event) {
+  await handleImportFile(event)
+  fetchEnvVars()
+  fetchAlerts()
+}
+
+// ============= 初始化 =============
 onMounted(() => {
   fetchEnvVars()
   fetchAlerts()

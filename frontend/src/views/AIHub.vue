@@ -85,7 +85,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">AI 服务商配置</span>
-            <el-button type="primary" @click="showProviderModal = true">
+            <el-button type="primary" @click="openProviderModal()">
               <el-icon><Plus /></el-icon>
               添加服务商
             </el-button>
@@ -136,7 +136,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">模型配置</span>
-            <el-button type="primary" @click="showModelModal = true">
+            <el-button type="primary" @click="openModelModal()">
               <el-icon><Plus /></el-icon>
               添加模型
             </el-button>
@@ -184,7 +184,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">功能路由配置</span>
-            <el-button type="primary" @click="showRoutingModal = true">
+            <el-button type="primary" @click="openRoutingModal()">
               <el-icon><Plus /></el-icon>
               添加路由
             </el-button>
@@ -230,7 +230,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">提示词模板</span>
-            <el-button type="primary" @click="showPromptModal = true">
+            <el-button type="primary" @click="openPromptModal()">
               <el-icon><Plus /></el-icon>
               创建模板
             </el-button>
@@ -272,7 +272,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">本地 RAG 上下文</span>
-            <el-button type="primary" @click="showRagModal = true">
+            <el-button type="primary" @click="openRagModal()">
               <el-icon><Plus /></el-icon>
               添加上下文
             </el-button>
@@ -312,7 +312,7 @@
         <template #header>
           <div class="card-header">
             <span class="font-semibold">AI 权限级别</span>
-            <el-button type="primary" @click="showPermissionModal = true">
+            <el-button type="primary" @click="openPermissionModal()">
               <el-icon><Plus /></el-icon>
               添加权限
             </el-button>
@@ -603,18 +603,32 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import { ElMessageBox } from 'element-plus'
 import {
   Cpu, Box, Connection, ChatDotRound, Document, Lock,
   DataLine, List, Plus, MagicStick
 } from '@element-plus/icons-vue'
+import { useAIHub } from '../composables/useAIHub.ts'
+import type {
+  ProviderFormData,
+  ModelFormData,
+  RoutingFormData,
+  PromptFormData,
+  RAGFormData,
+  PermissionFormData
+} from '../composables/useAIHub.ts'
 
-const api = axios.create({ baseURL: 'http://localhost:8000/api' })
+// ============= Composable 使用 =============
+const {
+  providers, models, featureRouting, promptTemplates, ragContexts,
+  permissions, auditLogs, usageStats,
+  getModelName, getPermissionColor, getStatusType, formatTime,
+  loadAll
+} = useAIHub()
 
-// 判断是否为暗色主题
+// ============= 主题判断 =============
 const isDarkTheme = computed(() => {
   return document.documentElement.classList.contains('dark') ||
     ['darcula', 'xuanmo', 'anying', 'gruvbox'].includes(
@@ -624,23 +638,7 @@ const isDarkTheme = computed(() => {
 
 const activeTab = ref('providers')
 
-// Data
-const providers = ref([])
-const models = ref([])
-const featureRouting = ref([])
-const promptTemplates = ref([])
-const ragContexts = ref([])
-const permissions = ref([])
-const auditLogs = ref([])
-
-const usageStats = ref({
-  total_requests: 0,
-  total_cost: 0,
-  input_tokens: 0,
-  output_tokens: 0
-})
-
-// Modals
+// ============= Modals =============
 const showProviderModal = ref(false)
 const showModelModal = ref(false)
 const showRoutingModal = ref(false)
@@ -648,137 +646,42 @@ const showPromptModal = ref(false)
 const showRagModal = ref(false)
 const showPermissionModal = ref(false)
 
-// Editing state
-const editingProvider = ref(null)
-const editingModel = ref(null)
-const editingRouting = ref(null)
-const editingPrompt = ref(null)
-const editingRag = ref(null)
-const editingPermission = ref(null)
+// ============= Editing State =============
+const editingProvider = ref<any>(null)
+const editingModel = ref<any>(null)
+const editingRouting = ref<any>(null)
+const editingPrompt = ref<any>(null)
+const editingRag = ref<any>(null)
+const editingPermission = ref<any>(null)
 
-// Forms
-const providerForm = reactive({
+// ============= Forms =============
+const providerForm = reactive<ProviderFormData>({
   name: '', display_name: '', api_base_url: '', api_key: '', is_enabled: true, is_primary: false
 })
-const modelForm = reactive({
+
+const modelForm = reactive<ModelFormData>({
   provider_id: null, model_id: '', display_name: '', model_type: 'chat', context_window: null, is_enabled: true
 })
-const routingForm = reactive({
+
+const routingForm = reactive<RoutingFormData>({
   feature: '', display_name: '', primary_model_id: null, is_enabled: true
 })
-const promptForm = reactive({
-  feature: '', display_name: '', system_prompt: '', user_template: '', temperature: 0.7, top_p: 0.9, max_tokens: 2048, context_lines: 100, is_enabled: true
+
+const promptForm = reactive<PromptFormData>({
+  feature: '', display_name: '', system_prompt: '', user_template: '',
+  temperature: 0.7, top_p: 0.9, max_tokens: 2048, context_lines: 100, is_enabled: true
 })
-const ragForm = reactive({
+
+const ragForm = reactive<RAGFormData>({
   context_type: 'code', context_key: '', content: '', injection_position: 'system', is_enabled: true
 })
-const permissionForm = reactive({
+
+const permissionForm = reactive<PermissionFormData>({
   permission_level: 1, permission_name: '', description: '', requires_confirm: true, is_enabled: true
 })
 
-// Load data
-async function loadProviders() {
-  try {
-    const res = await api.get('/ai/providers')
-    providers.value = res.data
-  } catch (e) {
-    console.error('Failed to load providers:', e)
-  }
-}
-
-async function loadModels() {
-  try {
-    const res = await api.get('/ai/models')
-    models.value = res.data
-  } catch (e) {
-    console.error('Failed to load models:', e)
-  }
-}
-
-async function loadFeatureRouting() {
-  try {
-    const res = await api.get('/ai/feature-routing')
-    featureRouting.value = res.data
-  } catch (e) {
-    console.error('Failed to load feature routing:', e)
-  }
-}
-
-async function loadPromptTemplates() {
-  try {
-    const res = await api.get('/ai/prompt-templates')
-    promptTemplates.value = res.data
-  } catch (e) {
-    console.error('Failed to load prompt templates:', e)
-  }
-}
-
-async function loadRagContexts() {
-  try {
-    const res = await api.get('/ai/rag-context')
-    ragContexts.value = res.data
-  } catch (e) {
-    console.error('Failed to load RAG contexts:', e)
-  }
-}
-
-async function loadPermissions() {
-  try {
-    const res = await api.get('/ai/permissions')
-    permissions.value = res.data
-  } catch (e) {
-    console.error('Failed to load permissions:', e)
-  }
-}
-
-async function loadUsageStats() {
-  try {
-    const res = await api.get('/ai/usage-stats')
-    usageStats.value = res.data
-  } catch (e) {
-    console.error('Failed to load usage stats:', e)
-  }
-}
-
-async function loadAuditLogs() {
-  try {
-    const res = await api.get('/ai/audit-logs')
-    auditLogs.value = res.data
-  } catch (e) {
-    console.error('Failed to load audit logs:', e)
-  }
-}
-
-// Helpers
-function getModelName(modelId) {
-  if (!modelId) return '未设置'
-  const model = models.value.find(m => m.id === modelId)
-  return model ? model.display_name : '未知'
-}
-
-function getPermissionColor(level) {
-  const colors = { 1: 'var(--color-success)', 2: 'var(--color-warning)', 3: 'var(--color-danger)' }
-  return colors[level] || 'var(--text-muted)'
-}
-
-function getStatusType(status) {
-  const types = {
-    success: 'success',
-    error: 'danger',
-    fallback: 'warning',
-    cached: ''
-  }
-  return types[status] || 'info'
-}
-
-function formatTime(timeStr) {
-  if (!timeStr) return '-'
-  const d = new Date(timeStr)
-  return d.toLocaleString('zh-CN')
-}
-
-// Provider CRUD
-function openProviderModal(provider = null) {
+// ============= Provider CRUD =============
+function openProviderModal(provider: any = null) {
   editingProvider.value = provider
   if (provider) {
     Object.assign(providerForm, {
@@ -798,34 +701,23 @@ function closeProviderModal() {
 }
 
 async function handleSaveProvider() {
-  try {
-    if (editingProvider.value) {
-      await api.put(`/ai/providers/${editingProvider.value.id}`, providerForm)
-      ElMessage.success('服务商已更新')
-    } else {
-      await api.post('/ai/providers', providerForm)
-      ElMessage.success('服务商已创建')
-    }
-    closeProviderModal()
-    loadProviders()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { saveProvider } = useAIHub()
+  await saveProvider(editingProvider.value?.id || null, providerForm)
+  closeProviderModal()
 }
 
-async function handleDeleteProvider(id) {
+async function handleDeleteProvider(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该服务商吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/providers/${id}`)
-    ElMessage.success('已删除')
-    loadProviders()
+    const { deleteProvider } = useAIHub()
+    await deleteProvider(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// Model CRUD
-function openModelModal(model = null) {
+// ============= Model CRUD =============
+function openModelModal(model: any = null) {
   editingModel.value = model
   if (model) {
     Object.assign(modelForm, {
@@ -845,34 +737,23 @@ function closeModelModal() {
 }
 
 async function handleSaveModel() {
-  try {
-    if (editingModel.value) {
-      await api.put(`/ai/models/${editingModel.value.id}`, modelForm)
-      ElMessage.success('模型已更新')
-    } else {
-      await api.post('/ai/models', modelForm)
-      ElMessage.success('模型已创建')
-    }
-    closeModelModal()
-    loadModels()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { saveModel } = useAIHub()
+  await saveModel(editingModel.value?.id || null, modelForm)
+  closeModelModal()
 }
 
-async function handleDeleteModel(id) {
+async function handleDeleteModel(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该模型吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/models/${id}`)
-    ElMessage.success('已删除')
-    loadModels()
+    const { deleteModel } = useAIHub()
+    await deleteModel(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// Routing CRUD
-function openRoutingModal(routing = null) {
+// ============= Routing CRUD =============
+function openRoutingModal(routing: any = null) {
   editingRouting.value = routing
   if (routing) {
     Object.assign(routingForm, {
@@ -891,34 +772,23 @@ function closeRoutingModal() {
 }
 
 async function handleSaveRouting() {
-  try {
-    if (editingRouting.value) {
-      await api.put(`/ai/feature-routing/${editingRouting.value.id}`, routingForm)
-      ElMessage.success('路由已更新')
-    } else {
-      await api.post('/ai/feature-routing', routingForm)
-      ElMessage.success('路由已创建')
-    }
-    closeRoutingModal()
-    loadFeatureRouting()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { saveRouting } = useAIHub()
+  await saveRouting(editingRouting.value?.id || null, routingForm)
+  closeRoutingModal()
 }
 
-async function handleDeleteRouting(id) {
+async function handleDeleteRouting(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该路由吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/feature-routing/${id}`)
-    ElMessage.success('已删除')
-    loadFeatureRouting()
+    const { deleteRouting } = useAIHub()
+    await deleteRouting(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// Prompt Template CRUD
-function openPromptModal(template = null) {
+// ============= Prompt CRUD =============
+function openPromptModal(template: any = null) {
   editingPrompt.value = template
   if (template) {
     Object.assign(promptForm, {
@@ -939,34 +809,23 @@ function closePromptModal() {
 }
 
 async function handleSavePrompt() {
-  try {
-    if (editingPrompt.value) {
-      await api.put(`/ai/prompt-templates/${editingPrompt.value.id}`, promptForm)
-      ElMessage.success('模板已更新')
-    } else {
-      await api.post('/ai/prompt-templates', promptForm)
-      ElMessage.success('模板已创建')
-    }
-    closePromptModal()
-    loadPromptTemplates()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { savePrompt } = useAIHub()
+  await savePrompt(editingPrompt.value?.id || null, promptForm)
+  closePromptModal()
 }
 
-async function handleDeletePrompt(id) {
+async function handleDeletePrompt(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该模板吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/prompt-templates/${id}`)
-    ElMessage.success('已删除')
-    loadPromptTemplates()
+    const { deletePrompt } = useAIHub()
+    await deletePrompt(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// RAG Context CRUD
-function openRagModal(rag = null) {
+// ============= RAG CRUD =============
+function openRagModal(rag: any = null) {
   editingRag.value = rag
   if (rag) {
     Object.assign(ragForm, {
@@ -985,34 +844,23 @@ function closeRagModal() {
 }
 
 async function handleSaveRag() {
-  try {
-    if (editingRag.value) {
-      await api.put(`/ai/rag-context/${editingRag.value.id}`, ragForm)
-      ElMessage.success('上下文已更新')
-    } else {
-      await api.post('/ai/rag-context', ragForm)
-      ElMessage.success('上下文已创建')
-    }
-    closeRagModal()
-    loadRagContexts()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { saveRag } = useAIHub()
+  await saveRag(editingRag.value?.id || null, ragForm)
+  closeRagModal()
 }
 
-async function handleDeleteRag(id) {
+async function handleDeleteRag(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该上下文吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/rag-context/${id}`)
-    ElMessage.success('已删除')
-    loadRagContexts()
+    const { deleteRag } = useAIHub()
+    await deleteRag(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// Permission CRUD
-function openPermissionModal(perm = null) {
+// ============= Permission CRUD =============
+function openPermissionModal(perm: any = null) {
   editingPermission.value = perm
   if (perm) {
     Object.assign(permissionForm, {
@@ -1031,54 +879,24 @@ function closePermissionModal() {
 }
 
 async function handleSavePermission() {
-  try {
-    if (editingPermission.value) {
-      await api.put(`/ai/permissions/${editingPermission.value.id}`, permissionForm)
-      ElMessage.success('权限已更新')
-    } else {
-      await api.post('/ai/permissions', permissionForm)
-      ElMessage.success('权限已创建')
-    }
-    closePermissionModal()
-    loadPermissions()
-  } catch (e) {
-    ElMessage.error('保存失败: ' + (e.response?.data?.detail || e.message))
-  }
+  const { savePermission } = useAIHub()
+  await savePermission(editingPermission.value?.id || null, permissionForm)
+  closePermissionModal()
 }
 
-async function handleDeletePermission(id) {
+async function handleDeletePermission(id: number) {
   try {
     await ElMessageBox.confirm('确定删除该权限吗？', '提示', { type: 'warning' })
-    await api.delete(`/ai/permissions/${id}`)
-    ElMessage.success('已删除')
-    loadPermissions()
+    const { deletePermission } = useAIHub()
+    await deletePermission(id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') console.error(e)
   }
 }
 
-// Alias for compatibility
-const editProvider = openProviderModal
-const deleteProvider = handleDeleteProvider
-const editModel = openModelModal
-const deleteModel = handleDeleteModel
-const editRouting = openRoutingModal
-const deleteRouting = handleDeleteRouting
-const editPromptTemplate = openPromptModal
-const deletePromptTemplate = handleDeletePrompt
-const deleteRagContext = handleDeleteRag
-const editPermission = openPermissionModal
-const deletePermission = handleDeletePermission
-
+// ============= 初始化 =============
 onMounted(() => {
-  loadProviders()
-  loadModels()
-  loadFeatureRouting()
-  loadPromptTemplates()
-  loadRagContexts()
-  loadPermissions()
-  loadUsageStats()
-  loadAuditLogs()
+  loadAll()
 })
 </script>
 
