@@ -103,3 +103,56 @@ npm run dev
 | POST | /tasks/{id}/run | 立即执行任务 |
 | GET | /tasks/{id}/logs | 获取任务日志 |
 | POST | /scripts/upload | 上传脚本文件 |
+
+## Docker 部署
+
+### 一键运行
+
+```bash
+docker run -d \
+  --name mingdi \
+  -p 8000:8000 \
+  -v mingdi-data:/app/data \
+  ghcr.io/yangbin09/mingdi:latest
+```
+
+访问 http://localhost:8000 即可使用。
+
+### 参数说明
+
+| 参数 | 说明 |
+|------|------|
+| `-p 8000:8000` | 映射端口（左边为宿主机端口） |
+| `-v mingdi-data:/app/data` | 持久化数据（数据库和脚本） |
+
+### 数据持久化
+
+所有数据存储在 Docker  volumes 中，包括：
+- SQLite 数据库 (`pycron.db`)
+- 上传的脚本文件
+
+### 更新版本
+
+```bash
+docker pull ghcr.io/yangbin09/mingdi:latest
+docker stop mingdi
+docker rm mingdi
+docker run -d \
+  --name mingdi \
+  -p 8000:8000 \
+  -v mingdi-data:/app/data \
+  ghcr.io/yangbin09/mingdi:latest
+```
+
+### 查看日志
+
+```bash
+docker logs -f mingdi
+```
+
+### 镜像地址
+
+```
+ghcr.io/yangbin09/mingdi:latest
+ghcr.io/yangbin09/mingdi:{commit_sha}
+```
