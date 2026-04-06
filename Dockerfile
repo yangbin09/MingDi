@@ -21,8 +21,16 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制后端代码
-COPY backend/ ./backend/
+# 复制后端代码（直接放在 /app 下，而非 /app/backend）
+COPY backend/main.py ./main.py
+COPY backend/models.py ./models.py
+COPY backend/schemas.py ./schemas.py
+COPY backend/scheduler.py ./scheduler.py
+COPY backend/ai_service.py ./ai_service.py
+COPY backend/db_utils.py ./db_utils.py
+COPY backend/docker_runner.py ./docker_runner.py
+COPY backend/repositories.py ./repositories.py
+COPY backend/constants.py ./constants.py
 COPY scripts/ ./scripts/
 
 # 复制前端构建产物
@@ -33,5 +41,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-# 启动命令：直接运行，无需额外配置
-CMD ["python", "-c", "from backend.models import init_db; init_db(); import uvicorn; uvicorn.run('backend.main:app', host='0.0.0.0', port=8000)"]
+# 启动命令：在 /app 目录下运行
+CMD ["python", "-c", "from models import init_db; init_db(); import uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=8000)"]
