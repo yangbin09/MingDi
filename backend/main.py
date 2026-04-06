@@ -51,6 +51,11 @@ app.add_middleware(
 # 挂载前端静态文件（仅当 frontend/dist 存在时）
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 
+# 前端静态文件已挂载到 /，用于 SPA (Vue Router)
+# API 路由通过 include_router(prefix="/api") 处理
+# 注意：StaticFiles 的 html=True 会在找不到文件时返回 JSON 404，
+# 前端路由（如 /tasks）需要由 Vue Router 在浏览器端处理
+
 SCRIPTS_DIR = "./scripts"
 
 
@@ -1786,9 +1791,20 @@ def list_audit_logs(db: Session = Depends(get_db)):
 # 在所有路由装饰器定义之后，再 include_router
 app.include_router(router, prefix="/api")
 
-# 在 API 路由挂载之后，再挂载前端静态文件（确保 API 路由优先）
+# SPA 前端路由支持：当请求路径不是 API 路由也不是静态资源时，返回 index.html
+# 这让 Vue Router 能在浏览器端处理前端路由（如 /tasks, /logs 等）
+@app.get("/{path:path}")
+async def serve_spa_fallback(path: str):
+    """Catch-all route for SPA fallback - must be last route"""
+    if path.startswith("api/") or path == "api":
+        raise HTTPException(status_code=404, detail="Not Found")
+    from fastapi.responses import FileResponse
+    index_path = os.path.join(FRONTEND_DIST, "index.html")
+    return FileResponse(index_path)
+
+# 挂载前端静态文件（处理 /assets 等静态资源）
 if os.path.exists(FRONTEND_DIST):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST), name="assets")
 
 
 if __name__ == "__main__":
