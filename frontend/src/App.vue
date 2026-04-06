@@ -94,7 +94,7 @@ import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import Scratchpad from './components/Scratchpad.vue'
 
 const route = useRoute()
-const api = axios.create({ baseURL: 'http://localhost:8000' })
+const api = axios.create({ baseURL: 'http://localhost:8000/api' })
 
 const refreshing = ref(false)
 const backendOnline = ref(false)
