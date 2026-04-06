@@ -143,7 +143,7 @@
           </div>
         </template>
 
-        <el-table :data="models" stripe style="width: 100%">
+        <el-table :data="models" :stripe="!isDarkTheme" style="width: 100%">
           <el-table-column label="模型" min-width="200">
             <template #default="{ row }">
               <div class="font-medium">{{ row.display_name }}</div>
@@ -390,7 +390,7 @@
           <span class="font-semibold">AI 操作审计日志</span>
         </template>
 
-        <el-table :data="auditLogs" stripe style="width: 100%">
+        <el-table :data="auditLogs" :stripe="!isDarkTheme" style="width: 100%">
           <el-table-column prop="created_at" label="时间" width="180">
             <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
           </el-table-column>
@@ -604,7 +604,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import {
@@ -613,6 +613,14 @@ import {
 } from '@element-plus/icons-vue'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
+
+// 判断是否为暗色主题
+const isDarkTheme = computed(() => {
+  return document.documentElement.classList.contains('dark') ||
+    ['darcula', 'xuanmo', 'anying', 'gruvbox'].includes(
+      document.documentElement.getAttribute('data-theme') || ''
+    )
+})
 
 const activeTab = ref('providers')
 

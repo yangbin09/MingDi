@@ -52,7 +52,7 @@
           </div>
         </template>
 
-        <el-table :data="envVars" stripe>
+        <el-table :data="envVars" :stripe="!isDarkTheme">
           <el-table-column label="变量名" width="200">
             <template #default="{ row }">
               <code class="px-2 py-1 rounded" style="background-color: var(--color-primary-subtle); color: var(--color-primary);">{{ row.key }}</code>
@@ -106,7 +106,7 @@
           </div>
         </template>
 
-        <el-table :data="alerts" stripe>
+        <el-table :data="alerts" :stripe="!isDarkTheme">
           <el-table-column prop="name" label="名称" width="150" />
           <el-table-column label="Webhook URL" min-width="250">
             <template #default="{ row }">
@@ -335,7 +335,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import {
@@ -343,6 +343,14 @@ import {
 } from '@element-plus/icons-vue'
 
 const api = axios.create({ baseURL: 'http://localhost:8000' })
+
+// 判断是否为暗色主题
+const isDarkTheme = computed(() => {
+  return document.documentElement.classList.contains('dark') ||
+    ['darcula', 'xuanmo', 'anying', 'gruvbox'].includes(
+      document.documentElement.getAttribute('data-theme') || ''
+    )
+})
 
 const activeTab = ref('env')
 const importFileRef = ref(null)

@@ -19,7 +19,7 @@
       <el-table
         v-else
         :data="tasks"
-        stripe
+        :stripe="!isDarkTheme"
         style="width: 100%"
         :header-cell-style="{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }"
       >
@@ -137,6 +137,14 @@ import { useTask } from '../composables/useTask.js'
 import { usePolling } from '../composables/usePolling.js'
 import TaskDrawer from '../components/Task/TaskDrawer.vue'
 import LogDrawer from '../components/Task/LogDrawer.vue'
+
+// 判断是否为暗色主题
+const isDarkTheme = computed(() => {
+  return document.documentElement.classList.contains('dark') ||
+    ['darcula', 'xuanmo', 'anying', 'gruvbox'].includes(
+      document.documentElement.getAttribute('data-theme') || ''
+    )
+})
 
 const {
   tasks,

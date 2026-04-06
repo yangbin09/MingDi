@@ -2,23 +2,19 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
 
 jobs:
   # ========== Lint & Test ==========
   lint-test:
     name: Lint & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,41 +33,34 @@ jobs:
 
       # ---- Python Lint ----
       - name: Install Python deps
-        run: |
-          pip install ruff httpx
+        run: pip install ruff httpx
 
       - name: Run ruff
-        run: |
-          ruff check backend/
+        run: ruff check backend/
 
-      # ---- Backend Test ----
+      # ---- Backend Import Check ----
       - name: Install backend deps
-        run: |
-          pip install -r backend/requirements.txt
+        run: pip install -r backend/requirements.txt
 
-      - name: Run backend tests
-        run: |
-          cd backend && python -c "import main; print('Backend import OK')"
+      - name: Verify backend imports
+        run: cd backend && python -c "import main; print('Backend import OK')"
 
       # ---- Frontend Lint & Build ----
       - name: Install frontend deps
-        run: |
-          cd frontend && npm ci
+        run: cd frontend && npm ci
 
       - name: Run ESLint
-        run: |
-          cd frontend && npx eslint src/ --ext .vue,.js
+        run: cd frontend && npx eslint src/ --ext .vue,.js
 
       - name: Build frontend
-        run: |
-          cd frontend && npm run build
+        run: cd frontend && npm run build
 
   # ========== Docker Build & Push ==========
   docker:
     name: Docker Build & Push
     runs-on: ubuntu-latest
     needs: lint-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     permissions:
       contents: read
       packages: write
@@ -90,13 +79,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract metadata for backend
+        id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
           tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=,suffix=-backend,format=raw
+            type=ref,event=branch,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=sha,prefix=,suffix=-frontend,format=raw
+            type=ref,event=branch,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend
@@ -104,7 +104,8 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -113,6 +114,7 @@ jobs:
         with:
           context: ./frontend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

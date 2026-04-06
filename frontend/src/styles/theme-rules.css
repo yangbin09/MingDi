@@ -851,65 +851,82 @@
    放在文件最末尾确保最后加载
    ======================================== */
 
-/* 针对玄墨主题：直接修改 Element Plus 核心变量库 */
+/* 核心变量覆盖 - 斑马纹的元凶就是 --el-fill-color-lighter */
+:root[data-theme='xuanmo'],
+:root[data-theme='anying'],
+html.dark {
+  --el-fill-color-lighter: #1C2128 !important;
+  --el-fill-color: #161B22 !important;
+  --el-table-bg-color: #161B22 !important;
+  --el-table-tr-bg-color: #161B22 !important;
+  --el-table-row-hover-bg-color: #21262D !important;
+  --el-table-striped-row-bg-color: #1C2128 !important;
+  --el-table-current-row-bg-color: #21262D !important;
+  --el-bg-color: #161B22 !important;
+  --el-bg-color-overlay: #161B22 !important;
+}
+
+/* 针对玄墨主题 */
 [data-theme='xuanmo'] {
-  /* 强制锁定表格所有状态的变量值为玄墨色 */
+  --el-fill-color-lighter: #1C2128 !important;
+  --el-fill-color: #161B22 !important;
   --el-table-bg-color: #161B22 !important;
   --el-table-tr-bg-color: #161B22 !important;
   --el-table-row-hover-bg-color: #21262D !important;
-  --el-fill-color-lighter: #161B22 !important; /* 斑马纹通常引用这个全局变量 */
+  --el-table-striped-row-bg-color: #1C2128 !important;
   --el-bg-color: #161B22 !important;
 }
 
-/* 针对暗影主题：同样处理 */
+/* 针对暗影主题 */
 [data-theme='anying'] {
+  --el-fill-color-lighter: #1C2128 !important;
+  --el-fill-color: #161B22 !important;
   --el-table-bg-color: #161B22 !important;
   --el-table-tr-bg-color: #161B22 !important;
   --el-table-row-hover-bg-color: #21262D !important;
-  --el-fill-color-lighter: #161B22 !important;
+  --el-table-striped-row-bg-color: #1C2128 !important;
   --el-bg-color: #161B22 !important;
 }
 
-/* 暴力清除所有可能产生白色的伪类和选择器 */
-[data-theme='xuanmo'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background-color: #1C2128 !important; /* 斑马纹深色条 */
-}
+/* ========================================
+   终极斑马纹清除 - 直接颜色值 + 最高优先级选择器
+   ======================================== */
 
-[data-theme='xuanmo'] .el-table__row {
-  background-color: #161B22 !important;
-}
-
-[data-theme='anying'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+/* 使用与 Element Plus 完全相同的选择器结构，但用直接颜色值 */
+/* 注意：只针对暗色主题，不影响浅色主题 */
+html[data-theme='xuanmo'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell,
+html[data-theme='anying'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell,
+html[data-theme='darcula'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell,
+html[data-theme='gruvbox'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell,
+html.dark .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #1C2128 !important;
   background-color: #1C2128 !important;
 }
 
-[data-theme='anying'] .el-table__row {
-  background-color: #161B22 !important;
+/* 悬停行也要处理 */
+html[data-theme='xuanmo'] .el-table--striped .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell,
+html[data-theme='anying'] .el-table--striped .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell,
+html[data-theme='darcula'] .el-table--striped .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell,
+html[data-theme='gruvbox'] .el-table--striped .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell,
+html.dark .el-table--striped .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell {
+  background-color: #21262D !important;
 }
 
-/* 检查组件内部污染：强制清除内联 style 背景 */
-[data-theme='xuanmo'] .el-table__body tr td {
-  background-image: none !important;
-}
-
-[data-theme='anying'] .el-table__body tr td {
-  background-image: none !important;
-}
-
-/* 防止 Element Plus 通过内联 style 注入白色背景 */
-[data-theme='xuanmo'] .el-table td.el-table__cell[style*="white"],
-[data-theme='anying'] .el-table td.el-table__cell[style*="white"] {
-  background-color: #161B22 !important;
-}
-
-/* 彻底清除斑马纹的白色背景 */
-[data-theme='xuanmo'] .el-table .el-table__row--striped,
-[data-theme='anying'] .el-table .el-table__row--striped {
+/* 覆盖斑马纹内边距区的白色 */
+html[data-theme='xuanmo'] .el-table .el-table__row--striped,
+html[data-theme='anying'] .el-table .el-table__row--striped,
+html[data-theme='darcula'] .el-table .el-table__row--striped,
+html[data-theme='gruvbox'] .el-table .el-table__row--striped,
+html.dark .el-table .el-table__row--striped {
+  background: #1C2128 !important;
   background-color: #1C2128 !important;
 }
 
-/* 全局表格背景锁定 */
-[data-theme='xuanmo'] .el-table .el-table__body-wrapper,
-[data-theme='anying'] .el-table .el-table__body-wrapper {
-  background-color: #161B22 !important;
+/* 清除内联样式污染 */
+[data-theme='xuanmo'] .el-table td[style*="background"],
+[data-theme='anying'] .el-table td[style*="background"],
+[data-theme='darcula'] .el-table td[style*="background"],
+[data-theme='gruvbox'] .el-table td[style*="background"],
+html.dark .el-table td[style*="background"] {
+  background-color: #1C2128 !important;
 }
