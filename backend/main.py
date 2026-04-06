@@ -48,8 +48,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api")
-
 # 挂载前端静态文件
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 if os.path.exists(FRONTEND_DIST):
@@ -342,6 +340,12 @@ def shutdown_event():
 @router.get("/")
 def root():
     return {"message": "鸣镝 API is running"}
+
+
+@app.get("/health")
+def health_check():
+    """健康检查端点 - 排除 API 业务逻辑干扰"""
+    return {"status": "ok", "service": "mingdi"}
 
 
 # System Stats Endpoint
@@ -1779,6 +1783,10 @@ def get_usage_stats(db: Session = Depends(get_db)):
 def list_audit_logs(db: Session = Depends(get_db)):
     """List AI audit logs"""
     return db.query(AIAuditLog).order_by(AIAuditLog.created_at.desc()).limit(100).all()
+
+
+# 在所有路由装饰器定义之后，再 include_router
+app.include_router(router, prefix="/api")
 
 
 if __name__ == "__main__":
