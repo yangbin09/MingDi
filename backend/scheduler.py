@@ -22,7 +22,7 @@ def send_webhook_alert(task_name: str, event: str, message: str):
     """Send alert via webhook for task failure/timeout"""
     db = SessionLocal()
     try:
-        alerts = db.query(AlertConfig).filter(AlertConfig.is_active == True).all()
+        alerts = db.query(AlertConfig).filter(AlertConfig.is_active).all()
         for alert in alerts:
             events = [e.strip() for e in alert.events.split(',')]
             if event in events:
@@ -285,7 +285,7 @@ def load_active_tasks():
     """Load and reschedule all active tasks (for self-healing on restart)"""
     db = SessionLocal()
     try:
-        tasks = db.query(Task).filter(Task.is_active == True).all()
+        tasks = db.query(Task).filter(Task.is_active).all()
         for task in tasks:
             if task.cron_expr:
                 add_task_job(task)
