@@ -660,11 +660,11 @@ const providerForm = reactive<ProviderFormData>({
 })
 
 const modelForm = reactive<ModelFormData>({
-  provider_id: null, model_id: '', display_name: '', model_type: 'chat', context_window: null, is_enabled: true
+  provider_id: undefined, model_id: '', display_name: '', model_type: 'chat', context_window: undefined, is_enabled: true
 })
 
 const routingForm = reactive<RoutingFormData>({
-  feature: '', display_name: '', primary_model_id: null, is_enabled: true
+  feature: '', display_name: '', primary_model_id: undefined, is_enabled: true
 })
 
 const promptForm = reactive<PromptFormData>({
@@ -726,7 +726,7 @@ function openModelModal(model: any = null) {
       context_window: model.context_window, is_enabled: model.is_enabled
     })
   } else {
-    Object.assign(modelForm, { provider_id: null, model_id: '', display_name: '', model_type: 'chat', context_window: null, is_enabled: true })
+    Object.assign(modelForm, { provider_id: undefined, model_id: '', display_name: '', model_type: 'chat', context_window: undefined, is_enabled: true })
   }
   showModelModal.value = true
 }
@@ -761,7 +761,7 @@ function openRoutingModal(routing: any = null) {
       primary_model_id: routing.primary_model_id, is_enabled: routing.is_enabled
     })
   } else {
-    Object.assign(routingForm, { feature: '', display_name: '', primary_model_id: null, is_enabled: true })
+    Object.assign(routingForm, { feature: '', display_name: '', primary_model_id: undefined, is_enabled: true })
   }
   showRoutingModal.value = true
 }

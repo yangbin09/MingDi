@@ -34,7 +34,7 @@ export interface ProviderFormData {
 }
 
 export interface ModelFormData {
-  provider_id: number | null
+  provider_id: number | undefined
   model_id: string
   display_name: string
   model_type: 'chat' | 'completion'
@@ -45,7 +45,7 @@ export interface ModelFormData {
 export interface RoutingFormData {
   feature: string
   display_name: string
-  primary_model_id: number | null
+  primary_model_id: number | undefined
   is_enabled: boolean
 }
 
