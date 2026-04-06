@@ -199,7 +199,7 @@
     <!-- Log Detail Drawer -->
     <el-drawer
       v-model="showLogDrawer"
-      :title="'日志详情 - ' + (currentLog ? getTaskName(currentLog.task_id) : '')"
+      :title="'日志详情 - ' + (currentLog ? getTaskName(currentLog.task_id, tasks) : '')"
       size="700px"
     >
       <div class="log-toolbar">
@@ -263,8 +263,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, watch, onBeforeUnmount, type WatchStopHandle } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import {
   Document, Refresh, Search, View, Download, MagicStick, Delete, RefreshLeft, FullScreen, Loading
@@ -373,20 +373,32 @@ async function handleSummarizeCurrentLog() {
   await summarizeLog(currentLog.value)
 }
 
-// 监听自动刷新间隔变化
-watch(autoRefreshInterval, (newVal, oldVal) => {
-  if (oldVal) stopAutoRefresh()
-  if (newVal) startAutoRefresh(fetchLogs)
-})
+// 监听自动刷新间隔变化 - 保存 stopHandle 以便卸载时清理
+let stopAutoRefreshWatch: WatchStopHandle | null = null
 
 onMounted(() => {
   fetchTasks()
   fetchLogs()
   startLiveDurationRefresh()
+  // 启动 watch 并保存停止函数
+  stopAutoRefreshWatch = watch(autoRefreshInterval, (newVal, oldVal) => {
+    if (oldVal) stopAutoRefresh()
+    if (newVal) startAutoRefresh(fetchLogs)
+  })
 })
 
-onUnmounted(() => {
+// 在组件卸载前停止所有异步操作
+onBeforeUnmount(() => {
+  // 1. 停止 watch
+  if (stopAutoRefreshWatch) {
+    stopAutoRefreshWatch()
+    stopAutoRefreshWatch = null
+  }
+  // 2. 停止自动刷新定时器
+  stopAutoRefresh()
+  // 3. 取消进行中的请求
   cancelPendingRequests()
+  // 4. 最后清理所有状态
   cleanupAll()
 })
 </script>
