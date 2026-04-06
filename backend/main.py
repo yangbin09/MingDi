@@ -8,9 +8,8 @@ from datetime import datetime, date, time as dt_time
 import os
 import shutil
 import time
-import secrets
 
-from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings, AIProvider, AIModel, AIFeatureRouting, AIPromptTemplate, AISemanticCache, AIRAGContext, AIPermissionLevel, AIUsageStats, AIAuditLog
+from models import init_db, get_db, Task, Log, EnvVar, AlertConfig, NodeFlow, SystemSettings, AIProvider, AIModel, AIFeatureRouting, AIPromptTemplate, AIRAGContext, AIPermissionLevel, AIUsageStats, AIAuditLog
 from schemas import (
     TaskCreate, TaskUpdate, TaskResponse, LogResponse, PaginatedLogResponse,
     EnvVarCreate, EnvVarUpdate, EnvVarResponse,
@@ -20,7 +19,7 @@ from schemas import (
     AICodeReviewRequest, AICodeReviewResponse, AINLPCronRequest, AINLPCronResponse,
     AISummarizeLogRequest, AISummarizeLogResponse, AIGenerateDocRequest, AIGenerateDocResponse,
     AIHumanizeAlertRequest, AIHumanizeAlertResponse,
-    WebhookTriggerRequest, WebhookTriggerResponse,
+    WebhookTriggerRequest,
     NodeFlowCreate, NodeFlowUpdate, NodeFlowResponse,
     DockerRunRequest, DockerRunResponse,
     SystemSettingsResponse, SystemSettingsUpdate,
@@ -33,7 +32,7 @@ from schemas import (
     AIUsageStatsResponse, AIAuditLogResponse
 )
 from scheduler import add_task_job, remove_task_job, execute_task_now, start_scheduler, stop_scheduler
-from ai_service import ai_service, generate_webhook_token, extract_requirements, parse_cron_human
+from ai_service import ai_service, generate_webhook_token, parse_cron_human
 from docker_runner import run_in_docker, extract_requirements_from_code, DOCKER_AVAILABLE
 
 app = FastAPI(title="鸣镝 API", version="1.0.0")
@@ -522,10 +521,10 @@ def search_logs(
         query = query.filter(Log.exit_code == exit_code)
     if exit_code_non_zero:
         # 过滤非0退出码（失败），排除 null（运行中）和 -1（超时）
-        query = query.filter(Log.exit_code != None, Log.exit_code != 0, Log.exit_code != -1)
+        query = query.filter(Log.exit_code is not None, Log.exit_code != 0, Log.exit_code != -1)
     if is_running:
         # 运行中：exit_code 和 end_time 都为 null
-        query = query.filter(Log.exit_code == None, Log.end_time == None)
+        query = query.filter(Log.exit_code.is_(None), Log.end_time.is_(None))
     if start_date:
         start_dt = parse_datetime_param(start_date, is_end=False)
         query = query.filter(Log.start_time >= start_dt)
@@ -1115,7 +1114,7 @@ def trigger_webhook_post(token: str, request: WebhookTriggerRequest, db: Session
                 env_var = EnvVar(
                     key=f"WEBHOOK_PAYLOAD_{key.upper()}",
                     value=str(value),
-                    description=f"Webhook payload from trigger"
+                    description="Webhook payload from trigger"
                 )
                 db.add(env_var)
         db.commit()

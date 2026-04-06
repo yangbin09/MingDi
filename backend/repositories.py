@@ -4,9 +4,9 @@
 Repository Pattern for 鸣镝
 Encapsulates database query logic for each entity.
 """
-from typing import List, Optional, Dict, Any, TypeVar, Type
+from typing import List, Optional, Dict, TypeVar, Type
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 
 from models import Base
 
@@ -27,7 +27,7 @@ class BaseRepository:
 
     def get_active(self, db: Session) -> List[T]:
         if hasattr(self.model, 'is_active'):
-            return db.query(self.model).filter(self.model.is_active == True).all()
+            return db.query(self.model).filter(self.model.is_active).all()
         return self.get_all(db)
 
     def delete(self, db: Session, id: int) -> bool:
@@ -122,7 +122,7 @@ class AlertRepository(BaseRepository):
 
     def get_active(self, db: Session) -> List[T]:
         from models import AlertConfig
-        return db.query(AlertConfig).filter(AlertConfig.is_active == True).all()
+        return db.query(AlertConfig).filter(AlertConfig.is_active).all()
 
 
 # Singleton instances

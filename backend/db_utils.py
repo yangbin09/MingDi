@@ -5,10 +5,10 @@ Database Utility Module
 Provides context managers and helpers for database operations.
 """
 from contextlib import contextmanager
-from typing import Generator, Dict, Any, List, Optional
+from typing import Generator, Dict, List, Optional
 from sqlalchemy.orm import Session
 
-from models import SessionLocal, Task, Log, EnvVar, AlertConfig, NodeFlow
+from models import SessionLocal, Task, EnvVar, AlertConfig
 
 
 @contextmanager
@@ -48,7 +48,7 @@ def get_env_dict(db: Session, include_defaults: bool = True) -> Dict[str, str]:
 
 def get_active_alerts(db: Session) -> List[AlertConfig]:
     """Get all active alert configurations."""
-    return db.query(AlertConfig).filter(AlertConfig.is_active == True).all()
+    return db.query(AlertConfig).filter(AlertConfig.is_active).all()
 
 
 def get_task_by_id(db: Session, task_id: int) -> Optional[Task]:

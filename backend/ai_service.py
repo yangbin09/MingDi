@@ -8,8 +8,7 @@ import os
 import re
 import json
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Optional, List
 
 import requests
 from requests.adapters import HTTPAdapter

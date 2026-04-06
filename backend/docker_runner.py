@@ -6,7 +6,7 @@ import os
 import time
 import tempfile
 import logging
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
