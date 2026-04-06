@@ -122,7 +122,7 @@
         <el-table-column label="任务" min-width="200">
           <template #default="{ row }">
             <div class="font-medium" @click="toggleExpand(row)" style="cursor: pointer;">
-              {{ getTaskName(row.task_id) }}
+              {{ getTaskName(row.task_id, tasks) }}
             </div>
             <div class="text-xs" style="color: var(--text-muted);">Log #{{ row.id }}</div>
           </template>

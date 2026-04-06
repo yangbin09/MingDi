@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
+from datetime import datetime, date, time as dt_time
 import os
 import shutil
 import time
@@ -497,10 +498,25 @@ def search_logs(
     db: Session = Depends(get_db)
 ):
     """Search logs with filters and pagination"""
+    if page < 1 or size < 1:
+        raise HTTPException(status_code=400, detail="page and size must be positive integers")
+
+    def parse_datetime_param(value: str, *, is_end: bool) -> datetime:
+        v = value.strip()
+        try:
+            if len(v) == 10:
+                d = date.fromisoformat(v)
+                return datetime.combine(d, dt_time.max if is_end else dt_time.min)
+            if v.endswith("Z"):
+                v = v[:-1] + "+00:00"
+            return datetime.fromisoformat(v)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid datetime format: {value}")
+
     query = db.query(Log)
 
     # Apply ALL filters before counting and pagination
-    if task_id:
+    if task_id is not None:
         query = query.filter(Log.task_id == task_id)
     if exit_code is not None:
         query = query.filter(Log.exit_code == exit_code)
@@ -511,9 +527,11 @@ def search_logs(
         # 运行中：exit_code 和 end_time 都为 null
         query = query.filter(Log.exit_code == None, Log.end_time == None)
     if start_date:
-        query = query.filter(Log.start_time >= start_date)
+        start_dt = parse_datetime_param(start_date, is_end=False)
+        query = query.filter(Log.start_time >= start_dt)
     if end_date:
-        query = query.filter(Log.start_time <= end_date)
+        end_dt = parse_datetime_param(end_date, is_end=True)
+        query = query.filter(Log.start_time <= end_dt)
     if keyword:
         keyword_lower = keyword.lower()
         query = query.filter(func.lower(Log.output).like(f"%{keyword_lower}%", escape="/"))
