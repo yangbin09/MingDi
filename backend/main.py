@@ -1791,20 +1791,26 @@ def list_audit_logs(db: Session = Depends(get_db)):
 # 在所有路由装饰器定义之后，再 include_router
 app.include_router(router, prefix="/api")
 
-# SPA 前端路由支持：当请求路径不是 API 路由也不是静态资源时，返回 index.html
-# 这让 Vue Router 能在浏览器端处理前端路由（如 /tasks, /logs 等）
+# 挂载前端静态文件（处理 /assets 等静态资源，必须在 catch-all 之前）
+if os.path.exists(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+    # 也挂载 favicon
+    app.mount("/favicon.png", StaticFiles(directory=FRONTEND_DIST, html=False), name="favicon")
+
+# SPA catch-all 路由：所有非 API 请求返回 index.html
+# 必须放在 StaticFiles 挂载之后，这样 /assets/* 会被 StaticFiles 处理
 @app.get("/{path:path}")
 async def serve_spa_fallback(path: str):
-    """Catch-all route for SPA fallback - must be last route"""
+    """Catch-all route for SPA - must be last route after StaticFiles"""
+    # 排除 API 路由
     if path.startswith("api/") or path == "api":
+        raise HTTPException(status_code=404, detail="Not Found")
+    # 排除静态资源（虽然上面已挂载，但以防万一）
+    if "." in path:  # 有扩展名的请求应该是静态资源
         raise HTTPException(status_code=404, detail="Not Found")
     from fastapi.responses import FileResponse
     index_path = os.path.join(FRONTEND_DIST, "index.html")
     return FileResponse(index_path)
-
-# 挂载前端静态文件（处理 /assets 等静态资源）
-if os.path.exists(FRONTEND_DIST):
-    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST), name="assets")
 
 
 if __name__ == "__main__":
