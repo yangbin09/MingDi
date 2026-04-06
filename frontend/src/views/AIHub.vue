@@ -612,7 +612,7 @@ import {
   DataLine, List, Plus, MagicStick
 } from '@element-plus/icons-vue'
 
-const api = axios.create({ baseURL: 'http://localhost:8000' })
+const api = axios.create({ baseURL: 'http://localhost:8000/api' })
 
 // 判断是否为暗色主题
 const isDarkTheme = computed(() => {

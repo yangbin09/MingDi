@@ -119,7 +119,7 @@ import { XMarkIcon } from '@heroicons/vue/24/outline'
 const props = defineProps({ show: Boolean })
 const emit = defineEmits(['close'])
 
-const api = axios.create({ baseURL: 'http://localhost:8000' })
+const api = axios.create({ baseURL: 'http://localhost:8000/api' })
 
 const code = ref(`print("Hello from Scratchpad!")
 print("Quick Python execution")
