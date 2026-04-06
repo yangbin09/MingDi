@@ -15,7 +15,10 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(taskkill //F //IM uvicorn.exe)",
-      "Bash(taskkill //F //PID 25804)"
+      "Bash(taskkill //F //PID 25804)",
+      "Bash(claude:*)",
+      "Bash(cp:*)",
+      "Bash(grep -l \"ecc\\\\|plugin\" ~/.claude/debug/*.txt)"
     ]
   }
 }
