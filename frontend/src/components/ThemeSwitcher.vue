@@ -135,7 +135,7 @@ const currentThemeId = ref('darcula')
 const themes = [
   {
     id: 'darcula',
-    label: 'JetBrains Darcula',
+    label: '玄墨',
     description: 'IDEA 经典暗色，长时间编码最护眼',
     badge: '推荐',
     icon: markRaw(MoonIcon),
@@ -159,7 +159,7 @@ const themes = [
   },
   {
     id: 'gruvbox',
-    label: 'Gruvbox Material',
+    label: '青瓷',
     description: '复古琥珀暖色调，极致护眼',
     badge: null,
     icon: markRaw(SunIcon),
@@ -171,7 +171,7 @@ const themes = [
   },
   {
     id: 'intellij',
-    label: 'IntelliJ Light',
+    label: '素雪',
     description: 'IDEA 经典亮色，干净高对比',
     badge: null,
     icon: markRaw(CodeBracketIcon),

@@ -36,7 +36,7 @@ from scheduler import add_task_job, remove_task_job, execute_task_now, start_sch
 from ai_service import ai_service, generate_webhook_token, extract_requirements, parse_cron_human
 from docker_runner import run_in_docker, extract_requirements_from_code, DOCKER_AVAILABLE
 
-app = FastAPI(title="PyCron-Master API", version="1.0.0")
+app = FastAPI(title="鸣镝 API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -332,7 +332,7 @@ def shutdown_event():
 
 @app.get("/")
 def root():
-    return {"message": "PyCron-Master API is running"}
+    return {"message": "鸣镝 API is running"}
 
 
 # System Stats Endpoint
@@ -626,7 +626,7 @@ def download_log(log_id: int, db: Session = Depends(get_db)):
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
 
-    content = f"=== PyCron-Master Log #{log.id} ===\n"
+    content = f"=== 鸣镝 Log #{log.id} ===\n"
     content += f"Task ID: {log.task_id}\n"
     content += f"Start Time: {log.start_time}\n"
     content += f"End Time: {log.end_time}\n"

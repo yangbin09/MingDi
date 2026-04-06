@@ -1,5 +1,5 @@
 /**
- * Shared utility functions for PyCron-Master
+ * Shared utility functions for 鸣镝
  * Centralizes formatting and helper functions to avoid duplication
  */
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI Service Layer for PyCron-Master Phase 8
+AI Service Layer for 鸣镝
 Integrates with Minimax API for AI-powered features
 """
 import os

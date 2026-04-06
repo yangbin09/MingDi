@@ -1,5 +1,5 @@
 /**
- * Unified API Client for PyCron-Master
+ * Unified API Client for 鸣镝
  * Centralizes axios configuration and provides consistent error handling
  */
 import axios from 'axios'

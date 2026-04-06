@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Constants and Enumerations for PyCron-Master
+Constants and Enumerations for 鸣镝
 Centralizes magic strings and configuration values.
 """
 from enum import Enum

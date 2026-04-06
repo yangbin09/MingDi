@@ -76,7 +76,7 @@ function getLastLines(output: string | null, lines = 10): string {
 
 // ============= 文件下载 =============
 function buildLogContent(log: LogEntry, tasks: Task[]): string {
-  return `=== PyCron-Master Log #${log.id} ===
+  return `=== 鸣镝 Log #${log.id} ===
 Task: ${getTaskName(log.task_id, tasks)}
 Status: ${getStatusLabel(log)}
 Start Time: ${formatTimePrecise(log.start_time)}

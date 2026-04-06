@@ -35,7 +35,7 @@ def send_webhook_alert(task_name: str, event: str, message: str):
                         humanized = ai_service.humanize_alert(event, task_name, message)
                         content = humanized
                     else:
-                        content = f"[PyCron-Master] {event.upper()}: {task_name}\n{message}"
+                        content = f"[鸣镝] {event.upper()}: {task_name}\n{message}"
 
                     payload = {
                         "msgtype": "text",

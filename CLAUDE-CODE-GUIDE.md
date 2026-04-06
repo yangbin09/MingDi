@@ -211,7 +211,7 @@ npx ccg-workflow
 
 ## 五、项目实战命令
 
-### 5.1 PyCron-Master 项目
+### 5.1 鸣镝 项目
 
 ```bash
 # 启动 Claude Code

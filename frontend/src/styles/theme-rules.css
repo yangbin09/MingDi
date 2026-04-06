@@ -1,0 +1,151 @@
+/*
+ * ECC Theme Rules System - 鸣镝
+ * 基于 CSS Custom Properties 的组件级主题控制
+ */
+
+/* ========================================
+   素雪 (SuXue) - IntelliJ Light
+   ======================================== */
+:root[data-theme='intellij'],
+:root[data-theme='suxue'] {
+  --ecc-card-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.12), 0 1px 3px -1px rgba(0, 0, 0, 0.08);
+  --ecc-card-shadow-hover: 0 4px 16px -2px rgba(0, 0, 0, 0.15), 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+  --ecc-nav-bg: var(--bg-secondary);
+  --ecc-nav-border: var(--border-subtle);
+  --ecc-input-bg: var(--bg-tertiary);
+  --ecc-input-border: var(--border-subtle);
+  --ecc-btn-primary-bg: var(--color-primary);
+  --ecc-btn-primary-hover: #2c7bb6;
+}
+
+/* ========================================
+   玄墨 (XuanMo) - JetBrains Darcula
+   ======================================== */
+:root[data-theme='darcula'],
+:root[data-theme='xuanmo'] {
+  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -2px rgba(0, 0, 0, 0.2);
+  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.35), 0 3px 8px -2px rgba(0, 0, 0, 0.25);
+  --ecc-nav-bg: var(--bg-secondary);
+  --ecc-nav-border: var(--border-subtle);
+  --ecc-input-bg: var(--bg-tertiary);
+  --ecc-input-border: var(--border-subtle);
+  --ecc-btn-primary-bg: var(--color-primary);
+  --ecc-btn-primary-hover: #4da6d9;
+}
+
+/* ========================================
+   保留原名的 One Dark Pro
+   ======================================== */
+:root[data-theme='onedark'] {
+  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
+  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.35);
+  --ecc-nav-bg: var(--bg-secondary);
+  --ecc-nav-border: var(--border-subtle);
+  --ecc-input-bg: var(--bg-tertiary);
+  --ecc-input-border: var(--border-subtle);
+  --ecc-btn-primary-bg: var(--color-primary);
+  --ecc-btn-primary-hover: #7ec3f4;
+}
+
+/* ========================================
+   青瓷 (QingCi) - Gruvbox Material
+   ======================================== */
+:root[data-theme='gruvbox'],
+:root[data-theme='qingci'] {
+  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.45);
+  --ecc-nav-bg: var(--bg-secondary);
+  --ecc-nav-border: var(--border-subtle);
+  --ecc-input-bg: var(--bg-tertiary);
+  --ecc-input-border: var(--border-subtle);
+  --ecc-btn-primary-bg: #D65D0E;
+  --ecc-btn-primary-hover: #c2410c;
+}
+
+/* ========================================
+   组件规则类
+   ======================================== */
+.ecc-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--ecc-card-shadow);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+.ecc-card:hover {
+  box-shadow: var(--ecc-card-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.ecc-nav {
+  background-color: var(--ecc-nav-bg);
+  border-bottom: 1px solid var(--ecc-nav-border);
+}
+
+.ecc-input {
+  background-color: var(--ecc-input-bg);
+  border: 1px solid var(--ecc-input-border);
+  color: var(--text-main);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.ecc-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.ecc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: none;
+}
+.ecc-btn-primary {
+  background-color: var(--ecc-btn-primary-bg);
+  color: var(--text-inverse);
+}
+.ecc-btn-primary:hover:not(:disabled) {
+  background-color: var(--ecc-btn-primary-hover);
+}
+
+/* ========================================
+   Z-Index 深度修复
+   ======================================== */
+
+/* 确保 Element Plus 弹出层拥有最高优先级 */
+.el-popper.is-light,
+.el-popper.is-dark,
+.el-dropdown-menu,
+.el-select-dropdown,
+.el-autocomplete-suggestion {
+  z-index: 9999 !important;
+}
+
+/* 修复容器堆叠上下文 */
+#app {
+  position: relative;
+  z-index: 1;
+}
+
+.app-container {
+  isolation: isolate;
+}
+
+/* 主题切换丝滑过渡 - 水墨洇散效果 */
+.ecc-card,
+.ecc-nav,
+.ecc-input,
+.ecc-btn,
+.app-header,
+.app-sidebar,
+.el-card,
+.el-table,
+.el-dialog {
+  transition: all 0.3s ease !important;
+}

@@ -9,7 +9,7 @@
         <!-- Logo -->
         <div class="sidebar-logo" :style="{ borderBottom: '1px solid var(--border-subtle)' }">
           <h1 class="text-xl font-bold tracking-tight">
-            <span style="color: var(--color-primary);">Py</span>Cron<span style="color: var(--color-primary);">Master</span>
+            <span style="color: var(--color-primary);">鸣</span>镝
           </h1>
           <p class="text-xs mt-1.5 tracking-wide" style="color: var(--text-muted);">脚本定时管理平台</p>
         </div>
@@ -223,7 +223,7 @@ onUnmounted(() => {
 .main-container {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-header {
@@ -234,6 +234,9 @@ onUnmounted(() => {
   padding: 0 var(--space-lg);
   backdrop-filter: blur(8px);
   transition: background-color var(--transition-slow), border-color var(--transition-slow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-left {

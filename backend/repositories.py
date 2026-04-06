@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Repository Pattern for PyCron-Master
+Repository Pattern for 鸣镝
 Encapsulates database query logic for each entity.
 """
 from typing import List, Optional, Dict, Any, TypeVar, Type

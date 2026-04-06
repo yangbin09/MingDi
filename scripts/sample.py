@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sample test script for PyCron-Master"""
+"""Sample test script for 鸣镝"""
 
 import time
 import sys

@@ -18,7 +18,12 @@
       "Bash(taskkill //F //PID 25804)",
       "Bash(claude:*)",
       "Bash(cp:*)",
-      "Bash(grep -l \"ecc\\\\|plugin\" ~/.claude/debug/*.txt)"
+      "Bash(grep -l \"ecc\\\\|plugin\" ~/.claude/debug/*.txt)",
+      "Bash(python scripts/generate_favicon.py)",
+      "Bash(python -c \"from PIL import Image, ImageDraw; print\\('Pillow OK'\\)\")",
+      "Bash(where python:*)",
+      "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
+      "Bash(C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe:*)"
     ]
   }
 }
