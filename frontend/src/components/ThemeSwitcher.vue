@@ -146,9 +146,9 @@ const themes = [
     }
   },
   {
-    id: 'onedark',
-    label: 'One Dark Pro',
-    description: 'VS Code 最受欢迎，深邃蓝黑',
+    id: 'anying',
+    label: '暗影',
+    description: '影动随行，深邃如渊',
     badge: null,
     icon: markRaw(SparklesIcon),
     isDark: true,

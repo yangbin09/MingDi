@@ -23,7 +23,30 @@
       "Bash(python -c \"from PIL import Image, ImageDraw; print\\('Pillow OK'\\)\")",
       "Bash(where python:*)",
       "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
-      "Bash(C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe:*)"
+      "Bash(C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe:*)",
+      "mcp__plugin_ecc_playwright__browser_navigate",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(\"C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m uvicorn main:app --host 0.0.0.0 --port 8000)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(start /B \"backend\" \"C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m uvicorn main:app --host 0.0.0.0 --port 8000)",
+      "Bash(start /B \"frontend\" cmd /c \"npm run dev -- --port 5173\")",
+      "Bash(\"C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5173 :5174 :5175 :5176 :5177 :8000\")",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill /F /PID 38756)",
+      "Bash(taskkill /F /PID 39704)",
+      "Bash(taskkill /F /PID 39724)",
+      "Bash(taskkill /F /PID 24864)",
+      "Bash(taskkill /F /PID 41684)",
+      "Bash(findstr \":8000\")",
+      "Bash(tasklist)",
+      "Bash(findstr python:*)",
+      "Bash(taskkill /F /PID 38756 /PID 39676)",
+      "Bash(wmic process:*)",
+      "Bash(\"C:\\\\Users\\\\16922\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m uvicorn main:app --host 0.0.0.0 --port 8001)",
+      "Bash(cmd //c \"taskkill /F /PID 38756\")",
+      "Bash(cmd //c \"wmic process where processid=38756 get name,processid,commandline\")"
     ]
   }
 }

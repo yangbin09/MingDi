@@ -1,133 +1,842 @@
 /*
  * ECC Theme Rules System - 鸣镝
+ * 极客古风 · 高级感视觉系统
  * 基于 CSS Custom Properties 的组件级主题控制
  */
 
 /* ========================================
+   全局过渡曲线 (水墨洇散效果)
+   ======================================== */
+:root {
+  --ecc-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
    素雪 (SuXue) - IntelliJ Light
+   低饱和度古风 · 银霜素净
    ======================================== */
 :root[data-theme='intellij'],
-:root[data-theme='suxue'] {
-  --ecc-card-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.12), 0 1px 3px -1px rgba(0, 0, 0, 0.08);
-  --ecc-card-shadow-hover: 0 4px 16px -2px rgba(0, 0, 0, 0.15), 0 2px 6px -2px rgba(0, 0, 0, 0.1);
-  --ecc-nav-bg: var(--bg-secondary);
+:root[data-theme='suxue'],
+:root:not([data-theme]) {
+  /* 背景层次 */
+  --bg-primary: #F2F4F7;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E8ECF1;
+  --bg-hover: #DFE4EB;
+  --bg-active: #D5DCE6;
+
+  /* 边框 */
+  --border-subtle: #E2E8F0;
+  --border-strong: #CBD2DB;
+
+  /* 文字 */
+  --text-main: #1A202C;
+  --text-muted: #718096;
+  --text-disabled: #A0AEC0;
+  --text-inverse: #FFFFFF;
+
+  /* 主色系 - 玄灰 */
+  --color-primary: #4A5568;
+  --color-primary-hover: #2D3748;
+  --color-primary-subtle: rgba(74, 85, 104, 0.1);
+  --color-primary-glow: rgba(74, 85, 104, 0.25);
+
+  /* 辅色 - 银灰 */
+  --color-secondary: #A0AEC0;
+  --color-secondary-subtle: rgba(160, 174, 192, 0.15);
+
+  /* 状态色 - 苔绿 */
+  --color-success: #72A06A;
+  --color-success-subtle: rgba(114, 160, 106, 0.12);
+  --color-success-text: #5A8A52;
+
+  /* 状态色 - 赭石 */
+  --color-danger: #C0564D;
+  --color-danger-subtle: rgba(192, 86, 77, 0.12);
+  --color-danger-text: #A34538;
+
+  /* 状态色 - 藤黄 */
+  --color-warning: #B8860B;
+  --color-warning-subtle: rgba(184, 134, 11, 0.12);
+
+  /* 状态色 - 黛蓝 */
+  --color-info: #5A7D9A;
+  --color-purple: #805AD5;
+
+  /* 滚动条 */
+  --scrollbar-track: #F2F4F7;
+  --scrollbar-thumb: #CBD2DB;
+  --scrollbar-thumb-hover: #A0AEC0;
+
+  /* 阴影 - 弥散效果 */
+  --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-glow: 0 0 24px -6px rgba(74, 85, 104, 0.2);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* 渐变 */
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 100%);
+  --gradient-header: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+
+  /* 特殊 */
+  --selection-bg: rgba(74, 85, 104, 0.2);
+  --focus-ring: 0 0 0 3px rgba(74, 85, 104, 0.15);
+
+  /* ECC 组件变量 */
+  --ecc-card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --ecc-card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --ecc-nav-bg: rgba(255, 255, 255, 0.85);
   --ecc-nav-border: var(--border-subtle);
   --ecc-input-bg: var(--bg-tertiary);
   --ecc-input-border: var(--border-subtle);
   --ecc-btn-primary-bg: var(--color-primary);
-  --ecc-btn-primary-hover: #2c7bb6;
+  --ecc-btn-primary-hover: #2D3748;
+  --ecc-sidebar-bg: rgba(255, 255, 255, 0.75);
+  --ecc-sidebar-active-line: var(--color-primary);
 }
 
 /* ========================================
    玄墨 (XuanMo) - JetBrains Darcula
+   低饱和度古风 · 墨韵深邃
    ======================================== */
 :root[data-theme='darcula'],
 :root[data-theme='xuanmo'] {
-  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -2px rgba(0, 0, 0, 0.2);
-  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.35), 0 3px 8px -2px rgba(0, 0, 0, 0.25);
-  --ecc-nav-bg: var(--bg-secondary);
+  /* 背景层次 */
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-tertiary: #21262D;
+  --bg-hover: #2D333B;
+  --bg-active: #373E47;
+
+  /* 边框 */
+  --border-subtle: #30363D;
+  --border-strong: #444C56;
+
+  /* 文字 */
+  --text-main: #C9D1D9;
+  --text-muted: #8B949E;
+  --text-disabled: #6E7681;
+  --text-inverse: #0D1117;
+
+  /* 主色系 - 月白 */
+  --color-primary: #C9D1D9;
+  --color-primary-hover: #E6EDF3;
+  --color-primary-subtle: rgba(201, 209, 217, 0.1);
+  --color-primary-glow: rgba(201, 209, 217, 0.2);
+
+  /* 辅色 - 灰蓝 */
+  --color-secondary: #8B949E;
+  --color-secondary-subtle: rgba(139, 148, 158, 0.15);
+
+  /* 状态色 - 苔绿 */
+  --color-success: #72A06A;
+  --color-success-subtle: rgba(114, 160, 106, 0.12);
+  --color-success-text: #8CBF84;
+
+  /* 状态色 - 赭石 */
+  --color-danger: #C0564D;
+  --color-danger-subtle: rgba(192, 86, 77, 0.12);
+  --color-danger-text: #E07A70;
+
+  /* 状态色 - 藤黄 */
+  --color-warning: #D4A72C;
+  --color-warning-subtle: rgba(212, 167, 44, 0.12);
+
+  /* 状态色 - 黛蓝 */
+  --color-info: #6B9BCD;
+  --color-purple: #A371F7;
+
+  /* 滚动条 */
+  --scrollbar-track: #0D1117;
+  --scrollbar-thumb: #30363D;
+  --scrollbar-thumb-hover: #444C56;
+
+  /* 阴影 - 弥散效果 */
+  --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 24px -6px rgba(201, 209, 217, 0.15);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  /* 渐变 */
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0) 100%);
+  --gradient-header: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+
+  /* 特殊 */
+  --selection-bg: rgba(201, 209, 217, 0.25);
+  --focus-ring: 0 0 0 3px rgba(201, 209, 217, 0.2);
+
+  /* ECC 组件变量 */
+  --ecc-card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --ecc-card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --ecc-nav-bg: rgba(22, 27, 34, 0.9);
   --ecc-nav-border: var(--border-subtle);
   --ecc-input-bg: var(--bg-tertiary);
   --ecc-input-border: var(--border-subtle);
   --ecc-btn-primary-bg: var(--color-primary);
-  --ecc-btn-primary-hover: #4da6d9;
+  --ecc-btn-primary-hover: #E6EDF3;
+  --ecc-sidebar-bg: rgba(22, 27, 34, 0.8);
+  --ecc-sidebar-active-line: var(--color-primary);
 }
 
 /* ========================================
-   保留原名的 One Dark Pro
+   暗影 (AnYing) - 影动随行，深邃如渊
    ======================================== */
-:root[data-theme='onedark'] {
-  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
-  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.35);
-  --ecc-nav-bg: var(--bg-secondary);
+:root[data-theme='anying'] {
+  /* 背景层次 */
+  --bg-primary: #282C34;
+  --bg-secondary: #21252B;
+  --bg-tertiary: #2C313A;
+  --bg-hover: #2C313A;
+  --bg-active: #3B4048;
+
+  /* 边框 */
+  --border-subtle: #3E4451;
+  --border-strong: #4B5263;
+
+  /* 文字 */
+  --text-main: #ABB2BF;
+  --text-muted: #5C6370;
+  --text-disabled: #4B5263;
+  --text-inverse: #000000;
+
+  /* 主色系 - 雾蓝 */
+  --color-primary: #61AFEF;
+  --color-primary-hover: #4FA3E3;
+  --color-primary-subtle: rgba(97, 175, 239, 0.12);
+  --color-primary-glow: rgba(97, 175, 239, 0.3);
+
+  /* 辅色 */
+  --color-secondary: #5C6370;
+  --color-secondary-subtle: rgba(92, 99, 112, 0.15);
+
+  /* 状态色 */
+  --color-success: #98C379;
+  --color-success-subtle: rgba(152, 195, 121, 0.12);
+  --color-success-text: #98C379;
+
+  --color-danger: #E06C75;
+  --color-danger-subtle: rgba(224, 108, 117, 0.12);
+  --color-danger-text: #E06C75;
+
+  --color-warning: #E5C07B;
+  --color-warning-subtle: rgba(229, 192, 123, 0.12);
+
+  --color-info: #61AFEF;
+  --color-purple: #C678DD;
+
+  /* 滚动条 */
+  --scrollbar-track: #21252B;
+  --scrollbar-thumb: #3E4451;
+  --scrollbar-thumb-hover: #4B5263;
+
+  /* 阴影 */
+  --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 24px -6px rgba(97, 175, 239, 0.25);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  /* 渐变 */
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0) 100%);
+  --gradient-header: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+
+  /* 特殊 */
+  --selection-bg: rgba(97, 175, 239, 0.3);
+  --focus-ring: 0 0 0 3px rgba(97, 175, 239, 0.25);
+
+  /* ECC 组件变量 */
+  --ecc-card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --ecc-card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --ecc-nav-bg: rgba(33, 37, 43, 0.9);
   --ecc-nav-border: var(--border-subtle);
   --ecc-input-bg: var(--bg-tertiary);
   --ecc-input-border: var(--border-subtle);
   --ecc-btn-primary-bg: var(--color-primary);
-  --ecc-btn-primary-hover: #7ec3f4;
+  --ecc-btn-primary-hover: #7EC3F4;
+  --ecc-sidebar-bg: rgba(33, 37, 43, 0.85);
+  --ecc-sidebar-active-line: var(--color-primary);
 }
 
 /* ========================================
    青瓷 (QingCi) - Gruvbox Material
+   复古琥珀暖色调
    ======================================== */
 :root[data-theme='gruvbox'],
 :root[data-theme='qingci'] {
-  --ecc-card-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
-  --ecc-card-shadow-hover: 0 6px 20px -2px rgba(0, 0, 0, 0.45);
-  --ecc-nav-bg: var(--bg-secondary);
+  /* 背景层次 */
+  --bg-primary: #282828;
+  --bg-secondary: #32302F;
+  --bg-tertiary: #3C3836;
+  --bg-hover: #453D38;
+  --bg-active: #504C47;
+
+  /* 边框 */
+  --border-subtle: #504945;
+  --border-strong: #665C54;
+
+  /* 文字 */
+  --text-main: #EBDBB2;
+  --text-muted: #A89984;
+  --text-disabled: #7C6F64;
+  --text-inverse: #000000;
+
+  /* 主色系 - 琥珀 */
+  --color-primary: #D65D0E;
+  --color-primary-hover: #C2410C;
+  --color-primary-subtle: rgba(214, 93, 14, 0.15);
+  --color-primary-glow: rgba(214, 93, 14, 0.35);
+
+  /* 辅色 */
+  --color-secondary: #A89984;
+  --color-secondary-subtle: rgba(168, 153, 132, 0.15);
+
+  /* 状态色 */
+  --color-success: #98971A;
+  --color-success-subtle: rgba(152, 151, 26, 0.15);
+  --color-success-text: #B8B84A;
+
+  --color-danger: #CC241D;
+  --color-danger-subtle: rgba(204, 36, 29, 0.15);
+  --color-danger-text: #E74C3C;
+
+  --color-warning: #F59E0B;
+  --color-warning-subtle: rgba(245, 158, 11, 0.12);
+
+  --color-info: #458598;
+  --color-purple: #B162D1;
+
+  /* 滚动条 */
+  --scrollbar-track: #282828;
+  --scrollbar-thumb: #504945;
+  --scrollbar-thumb-hover: #665C54;
+
+  /* 阴影 */
+  --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 24px -6px rgba(214, 93, 14, 0.3);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+
+  /* 渐变 */
+  --gradient-card: linear-gradient(180deg, rgba(235, 219, 178, 0.02) 0%, rgba(0, 0, 0, 0) 100%);
+  --gradient-header: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+
+  /* 特殊 */
+  --selection-bg: rgba(214, 93, 14, 0.3);
+  --focus-ring: 0 0 0 3px rgba(214, 93, 14, 0.25);
+
+  /* ECC 组件变量 */
+  --ecc-card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --ecc-card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.35);
+  --ecc-nav-bg: rgba(50, 48, 47, 0.9);
   --ecc-nav-border: var(--border-subtle);
   --ecc-input-bg: var(--bg-tertiary);
   --ecc-input-border: var(--border-subtle);
-  --ecc-btn-primary-bg: #D65D0E;
+  --ecc-btn-primary-bg: var(--color-primary);
   --ecc-btn-primary-hover: #c2410c;
+  --ecc-sidebar-bg: rgba(50, 48, 47, 0.85);
+  --ecc-sidebar-active-line: var(--color-primary);
 }
 
 /* ========================================
-   组件规则类
+   Element Plus 变量彻底覆盖
    ======================================== */
+
+/* 素雪主题 - Element Plus */
+:root[data-theme='intellij'] .el-table,
+:root[data-theme='suxue'] .el-table,
+:root:not([data-theme]) .el-table {
+  --el-table-bg-color: var(--bg-primary);
+  --el-table-tr-bg-color: var(--bg-primary);
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-subtle);
+  --el-table-text-color: var(--text-main);
+  --el-table-header-text-color: var(--text-muted);
+}
+
+:root[data-theme='intellij'] .el-card,
+:root[data-theme='suxue'] .el-card,
+:root:not([data-theme]) .el-card {
+  --el-card-bg-color: var(--bg-secondary);
+  --el-card-border-color: var(--border-subtle);
+}
+
+:root[data-theme='intellij'] .el-input__wrapper,
+:root[data-theme='suxue'] .el-input__wrapper,
+:root:not([data-theme]) .el-input__wrapper {
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+:root[data-theme='intellij'] .el-button--primary,
+:root[data-theme='suxue'] .el-button--primary,
+:root:not([data-theme]) .el-button--primary {
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-hover-bg-color: var(--color-primary-hover);
+  --el-button-hover-border-color: var(--color-primary-hover);
+}
+
+:root[data-theme='intellij'] .el-button--primary.is-plain,
+:root[data-theme='suxue'] .el-button--primary.is-plain,
+:root:not([data-theme]) .el-button--primary.is-plain {
+  --el-button-bg-color: var(--color-primary-subtle);
+  --el-button-border-color: var(--color-primary);
+  --el-button-text-color: var(--color-primary);
+  --el-button-hover-text-color: var(--text-inverse);
+}
+
+:root[data-theme='intellij'] .el-menu,
+:root[data-theme='suxue'] .el-menu,
+:root:not([data-theme]) .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-text-color: var(--text-muted);
+  --el-menu-active-color: var(--color-primary);
+}
+
+/* 玄墨主题 - Element Plus */
+:root[data-theme='darcula'] .el-table,
+:root[data-theme='xuanmo'] .el-table {
+  --el-table-bg-color: var(--bg-primary);
+  --el-table-tr-bg-color: var(--bg-primary);
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: rgba(56, 139, 253, 0.15);
+  --el-table-border-color: #30363D;
+  --el-table-text-color: var(--text-main);
+  --el-table-header-text-color: var(--text-muted);
+}
+
+:root[data-theme='darcula'] .el-card,
+:root[data-theme='xuanmo'] .el-card {
+  --el-card-bg-color: var(--bg-secondary);
+  --el-card-border-color: var(--border-subtle);
+}
+
+:root[data-theme='darcula'] .el-input__wrapper,
+:root[data-theme='xuanmo'] .el-input__wrapper {
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+:root[data-theme='darcula'] .el-button--primary,
+:root[data-theme='xuanmo'] .el-button--primary {
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-text-color: var(--bg-primary);
+  --el-button-hover-bg-color: var(--color-primary-hover);
+  --el-button-hover-border-color: var(--color-primary-hover);
+}
+
+:root[data-theme='darcula'] .el-button--primary.is-plain,
+:root[data-theme='xuanmo'] .el-button--primary.is-plain {
+  --el-button-bg-color: var(--color-primary-subtle);
+  --el-button-border-color: var(--color-primary);
+  --el-button-text-color: var(--color-primary);
+}
+
+:root[data-theme='darcula'] .el-menu,
+:root[data-theme='xuanmo'] .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-text-color: var(--text-muted);
+  --el-menu-active-color: var(--color-primary);
+}
+
+/* 暗影主题 - Element Plus */
+:root[data-theme='anying'] .el-table {
+  --el-table-bg-color: var(--bg-primary);
+  --el-table-tr-bg-color: var(--bg-primary);
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: rgba(56, 139, 253, 0.15);
+  --el-table-border-color: #30363D;
+  --el-table-text-color: var(--text-main);
+  --el-table-header-text-color: var(--text-muted);
+}
+
+:root[data-theme='anying'] .el-card {
+  --el-card-bg-color: var(--bg-secondary);
+  --el-card-border-color: var(--border-subtle);
+}
+
+:root[data-theme='anying'] .el-input__wrapper {
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+:root[data-theme='anying'] .el-button--primary {
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-hover-bg-color: var(--color-primary-hover);
+  --el-button-hover-border-color: var(--color-primary-hover);
+}
+
+:root[data-theme='anying'] .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-text-color: var(--text-muted);
+  --el-menu-active-color: var(--color-primary);
+}
+
+/* 青瓷主题 - Element Plus */
+:root[data-theme='gruvbox'] .el-table {
+  --el-table-bg-color: var(--bg-primary);
+  --el-table-tr-bg-color: var(--bg-primary);
+  --el-table-header-bg-color: var(--bg-tertiary);
+  --el-table-row-hover-bg-color: var(--bg-hover);
+  --el-table-border-color: var(--border-subtle);
+  --el-table-text-color: var(--text-main);
+  --el-table-header-text-color: var(--text-muted);
+}
+
+:root[data-theme='gruvbox'] .el-card {
+  --el-card-bg-color: var(--bg-secondary);
+  --el-card-border-color: var(--border-subtle);
+}
+
+:root[data-theme='gruvbox'] .el-input__wrapper {
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
+  border: 1px solid var(--border-subtle);
+}
+
+:root[data-theme='gruvbox'] .el-button--primary {
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-hover-bg-color: var(--color-primary-hover);
+  --el-button-hover-border-color: var(--color-primary-hover);
+}
+
+:root[data-theme='gruvbox'] .el-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--bg-hover);
+  --el-menu-text-color: var(--text-muted);
+  --el-menu-active-color: var(--color-primary);
+}
+
+/* ========================================
+   玄墨/暗影 表格核打击修复
+   全透明策略：所有行/单元格背景透明，透出容器暗色背景
+   ======================================== */
+
+/* 1. 强制容器背景 - 奠定暗色基调 */
+[data-theme='xuanmo'] .el-table,
+[data-theme='anying'] .el-table {
+  background-color: #161B22 !important;
+  --el-table-bg-color: #161B22 !important;
+  --el-table-tr-bg-color: #161B22 !important;
+  --el-table-header-bg-color: #21262d !important;
+  --el-table-row-hover-bg-color: #21262d !important;
+  --el-table-border-color: #30363d !important;
+}
+
+/* 2. 核心：强制所有行、单元格、斑马纹、扩展行全部背景透明 */
+/* 这样它们会直接透出上方定义的 .el-table 的背景色 */
+[data-theme='xuanmo'] .el-table tr,
+[data-theme='xuanmo'] .el-table td,
+[data-theme='xuanmo'] .el-table th,
+[data-theme='xuanmo'] .el-table__row,
+[data-theme='xuanmo'] .el-table__body-wrapper,
+[data-theme='xuanmo'] .el-table__inner-wrapper,
+[data-theme='xuanmo'] .el-table__header-wrapper,
+[data-theme='xuanmo'] .el-table__expanded-cell,
+[data-theme='xuanmo'] .el-table--striped .el-table__body tr.el-table__row--striped,
+[data-theme='anying'] .el-table tr,
+[data-theme='anying'] .el-table td,
+[data-theme='anying'] .el-table th,
+[data-theme='anying'] .el-table__row,
+[data-theme='anying'] .el-table__body-wrapper,
+[data-theme='anying'] .el-table__inner-wrapper,
+[data-theme='anying'] .el-table__header-wrapper,
+[data-theme='anying'] .el-table__expanded-cell,
+[data-theme='anying'] .el-table--striped .el-table__body tr.el-table__row--striped {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #C9D1D9 !important;
+}
+
+/* 3. 重新定义悬停色 - 确保交互可见 */
+[data-theme='xuanmo'] .el-table__body tr:hover > td.el-table__cell,
+[data-theme='anying'] .el-table__body tr:hover > td.el-table__cell {
+  background-color: #21262d !important;
+  color: #E6EDF3 !important;
+}
+
+[data-theme='xuanmo'] .el-table__body tr:hover > td.el-table__cell .cell,
+[data-theme='anying'] .el-table__body tr:hover > td.el-table__cell .cell {
+  color: #E6EDF3 !important;
+}
+
+/* 4. 彻底杀死白色边框线 */
+[data-theme='xuanmo'] .el-table__inner-wrapper::before,
+[data-theme='xuanmo'] .el-table__inner-wrapper::after,
+[data-theme='xuanmo'] .el-table td.el-table__cell,
+[data-theme='xuanmo'] .el-table th.el-table__cell.is-leaf,
+[data-theme='anying'] .el-table__inner-wrapper::before,
+[data-theme='anying'] .el-table__inner-wrapper::after,
+[data-theme='anying'] .el-table td.el-table__cell,
+[data-theme='anying'] .el-table th.el-table__cell.is-leaf {
+  border-bottom: 1px solid #30363d !important;
+  border-color: #30363d !important;
+}
+
+/* 5. 表头单独处理 - 使用半暗色而非透明 */
+[data-theme='xuanmo'] .el-table__header th,
+[data-theme='xuanmo'] .el-table__header-wrapper th,
+[data-theme='anying'] .el-table__header th,
+[data-theme='anying'] .el-table__header-wrapper th {
+  background-color: #21262d !important;
+  color: #8B949E !important;
+}
+
+[data-theme='xuanmo'] .el-table__header th.el-table__cell > .cell,
+[data-theme='anying'] .el-table__header th.el-table__cell > .cell {
+  color: #8B949E !important;
+}
+
+/* 6. Fixed 列和滚动条 */
+[data-theme='xuanmo'] .el-table__fixed,
+[data-theme='xuanmo'] .el-table__fixed-right,
+[data-theme='anying'] .el-table__fixed,
+[data-theme='anying'] .el-table__fixed-right {
+  background-color: #161B22 !important;
+}
+
+[data-theme='xuanmo'] .el-table__fixed td,
+[data-theme='xuanmo'] .el-table__fixed-right td,
+[data-theme='anying'] .el-table__fixed td,
+[data-theme='anying'] .el-table__fixed-right td {
+  background-color: transparent !important;
+}
+
+[data-theme='xuanmo'] .el-table__body-wrapper::-webkit-scrollbar-track,
+[data-theme='anying'] .el-table__body-wrapper::-webkit-scrollbar-track {
+  background: #161B22 !important;
+}
+
+[data-theme='xuanmo'] .el-table__body-wrapper::-webkit-scrollbar-thumb,
+[data-theme='anying'] .el-table__body-wrapper::-webkit-scrollbar-thumb {
+  background: #30363d !important;
+  border-radius: 3px !important;
+}
+
+/* 7. 多选列 */
+[data-theme='xuanmo'] .el-table .el-table-column--selection > .cell,
+[data-theme='anying'] .el-table .el-table-column--selection > .cell {
+  background-color: transparent !important;
+}
+
+/* 8. 选中行 */
+[data-theme='xuanmo'] .el-table__body tr.current-row > td.el-table__cell,
+[data-theme='anying'] .el-table__body tr.current-row > td.el-table__cell {
+  background-color: #21262d !important;
+}
+
+/* ========================================
+   通用 Element Plus 覆盖
+   ======================================== */
+.el-popper.is-light,
+.el-popper.is-dark,
+.el-dropdown-menu,
+.el-select-dropdown,
+.el-autocomplete-suggestion,
+.el-date-picker,
+.el-color-picker__dropdown {
+  z-index: 9999 !important;
+}
+
+.el-dialog,
+.el-drawer {
+  --el-dialog-bg-color: var(--bg-secondary);
+  --el-drawer-bg-color: var(--bg-secondary);
+}
+
+.el-tag {
+  --el-tag-bg-color: var(--bg-tertiary);
+  --el-tag-border-color: var(--border-subtle);
+  --el-tag-text-color: var(--text-muted);
+}
+
+.el-select-dropdown {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+
+.el-message-box {
+  --el-messagebox-bg-color: var(--bg-secondary);
+  --el-messagebox-border-color: var(--border-subtle);
+}
+
+.el-tabs {
+  --el-tabs-header-height: 46px;
+}
+
+/* ========================================
+   ECC 组件规则类
+   ======================================== */
+
+/* 卡片 - 弥散阴影 + 细边框 */
 .ecc-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: 6px;
   box-shadow: var(--ecc-card-shadow);
-  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  transition: var(--ecc-transition);
+  padding: 24px;
 }
+
 .ecc-card:hover {
   box-shadow: var(--ecc-card-shadow-hover);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
 }
 
+/* 侧边栏 - 毛玻璃效果 */
+.ecc-sidebar {
+  background-color: var(--ecc-sidebar-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid var(--border-subtle);
+  transition: var(--ecc-transition);
+}
+
+/* 侧边栏菜单项 - 箭羽装饰线 */
+.ecc-sidebar .el-menu-item {
+  position: relative;
+  border-radius: 6px;
+  margin: 2px 0;
+  transition: var(--ecc-transition);
+}
+
+.ecc-sidebar .el-menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background-color: var(--ecc-sidebar-active-line);
+  border-radius: 0 2px 2px 0;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ecc-sidebar .el-menu-item:hover::before {
+  height: 50%;
+}
+
+.ecc-sidebar .el-menu-item.is-active::before {
+  height: 100%;
+}
+
+.ecc-sidebar .el-menu-item.is-active {
+  background-color: var(--color-primary-subtle) !important;
+}
+
+/* 导航栏 */
 .ecc-nav {
   background-color: var(--ecc-nav-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--ecc-nav-border);
+  transition: var(--ecc-transition);
 }
 
+/* 输入框 */
 .ecc-input {
   background-color: var(--ecc-input-bg);
   border: 1px solid var(--ecc-input-border);
   color: var(--text-main);
-  border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border-radius: 6px;
+  transition: var(--ecc-transition);
 }
+
 .ecc-input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-subtle);
 }
 
+/* 按钮 */
 .ecc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem 1rem;
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-medium);
-  transition: all var(--transition-fast);
+  border-radius: 6px;
+  font-weight: 500;
+  transition: var(--ecc-transition);
   cursor: pointer;
   border: none;
 }
+
 .ecc-btn-primary {
   background-color: var(--ecc-btn-primary-bg);
   color: var(--text-inverse);
 }
+
 .ecc-btn-primary:hover:not(:disabled) {
   background-color: var(--ecc-btn-primary-hover);
+  transform: translateY(-1px);
+}
+
+/* 图标容器 - 淡色背景 */
+.ecc-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  transition: var(--ecc-transition);
+}
+
+.ecc-icon:hover {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
 }
 
 /* ========================================
-   Z-Index 深度修复
+   仪表盘卡片
    ======================================== */
-
-/* 确保 Element Plus 弹出层拥有最高优先级 */
-.el-popper.is-light,
-.el-popper.is-dark,
-.el-dropdown-menu,
-.el-select-dropdown,
-.el-autocomplete-suggestion {
-  z-index: 9999 !important;
+.dashboard-card {
+  padding: 24px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  box-shadow: var(--ecc-card-shadow);
+  transition: var(--ecc-transition);
 }
 
-/* 修复容器堆叠上下文 */
+.dashboard-card:hover {
+  box-shadow: var(--ecc-card-shadow-hover);
+  border-color: var(--border-strong);
+}
+
+/* ========================================
+   全局过渡效果
+   ======================================== */
+.ecc-card,
+.ecc-nav,
+.ecc-input,
+.ecc-btn,
+.ecc-sidebar,
+.el-card,
+.el-table,
+.el-dialog,
+.el-drawer,
+.el-button,
+.el-input__wrapper,
+.el-menu-item,
+.app-header,
+.app-sidebar,
+.theme-transition {
+  transition: var(--ecc-transition) !important;
+}
+
+/* ========================================
+   修复容器堆叠上下文
+   ======================================== */
 #app {
   position: relative;
   z-index: 1;
@@ -137,15 +846,70 @@
   isolation: isolate;
 }
 
-/* 主题切换丝滑过渡 - 水墨洇散效果 */
-.ecc-card,
-.ecc-nav,
-.ecc-input,
-.ecc-btn,
-.app-header,
-.app-sidebar,
-.el-card,
-.el-table,
-.el-dialog {
-  transition: all 0.3s ease !important;
+/* ========================================
+   Last Strike - 玄墨/暗影 表格变量级联彻底抹除
+   放在文件最末尾确保最后加载
+   ======================================== */
+
+/* 针对玄墨主题：直接修改 Element Plus 核心变量库 */
+[data-theme='xuanmo'] {
+  /* 强制锁定表格所有状态的变量值为玄墨色 */
+  --el-table-bg-color: #161B22 !important;
+  --el-table-tr-bg-color: #161B22 !important;
+  --el-table-row-hover-bg-color: #21262D !important;
+  --el-fill-color-lighter: #161B22 !important; /* 斑马纹通常引用这个全局变量 */
+  --el-bg-color: #161B22 !important;
+}
+
+/* 针对暗影主题：同样处理 */
+[data-theme='anying'] {
+  --el-table-bg-color: #161B22 !important;
+  --el-table-tr-bg-color: #161B22 !important;
+  --el-table-row-hover-bg-color: #21262D !important;
+  --el-fill-color-lighter: #161B22 !important;
+  --el-bg-color: #161B22 !important;
+}
+
+/* 暴力清除所有可能产生白色的伪类和选择器 */
+[data-theme='xuanmo'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #1C2128 !important; /* 斑马纹深色条 */
+}
+
+[data-theme='xuanmo'] .el-table__row {
+  background-color: #161B22 !important;
+}
+
+[data-theme='anying'] .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #1C2128 !important;
+}
+
+[data-theme='anying'] .el-table__row {
+  background-color: #161B22 !important;
+}
+
+/* 检查组件内部污染：强制清除内联 style 背景 */
+[data-theme='xuanmo'] .el-table__body tr td {
+  background-image: none !important;
+}
+
+[data-theme='anying'] .el-table__body tr td {
+  background-image: none !important;
+}
+
+/* 防止 Element Plus 通过内联 style 注入白色背景 */
+[data-theme='xuanmo'] .el-table td.el-table__cell[style*="white"],
+[data-theme='anying'] .el-table td.el-table__cell[style*="white"] {
+  background-color: #161B22 !important;
+}
+
+/* 彻底清除斑马纹的白色背景 */
+[data-theme='xuanmo'] .el-table .el-table__row--striped,
+[data-theme='anying'] .el-table .el-table__row--striped {
+  background-color: #1C2128 !important;
+}
+
+/* 全局表格背景锁定 */
+[data-theme='xuanmo'] .el-table .el-table__body-wrapper,
+[data-theme='anying'] .el-table .el-table__body-wrapper {
+  background-color: #161B22 !important;
 }

@@ -6,6 +6,7 @@ import App from './App.vue'
 import router from './router'
 import { install as VueMonacoEditorPlugin } from '@guolao/vue-monaco-editor'
 import './style.css'
+import './styles/theme-rules.css'
 
 const app = createApp(App)
 

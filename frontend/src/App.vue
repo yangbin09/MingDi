@@ -117,7 +117,7 @@ const pageTitle = computed(() => {
 
 function onThemeChange(themeId) {
   // Check if dark theme
-  const darkThemes = ['darcula', 'onedark', 'gruvbox']
+  const darkThemes = ['darcula', 'anying', 'gruvbox']
   isDark.value = darkThemes.includes(themeId)
 }
 
@@ -148,7 +148,7 @@ let refreshInterval = null
 onMounted(() => {
   // Check initial dark mode state
   const savedTheme = localStorage.getItem('pycron-theme')
-  const darkThemes = ['darcula', 'onedark', 'gruvbox']
+  const darkThemes = ['darcula', 'anying', 'gruvbox']
   isDark.value = savedTheme ? darkThemes.includes(savedTheme) : true
 
   checkBackend()
@@ -165,6 +165,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 全局字体栈 */
+* {
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 .app-container {
   height: 100vh;
   overflow: hidden;
@@ -174,8 +179,12 @@ onUnmounted(() => {
   width: 240px !important;
   display: flex;
   flex-direction: column;
+  /* 极客古风：毛玻璃效果 */
+  background-color: var(--ecc-sidebar-bg, var(--bg-secondary));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-right: 1px solid var(--border-subtle);
-  transition: background-color var(--transition-slow), border-color var(--transition-slow);
+  transition: var(--ecc-transition, background-color var(--transition-slow), border-color var(--transition-slow));
 }
 
 .sidebar-logo {
@@ -189,9 +198,33 @@ onUnmounted(() => {
 }
 
 .sidebar-menu .el-menu-item {
-  border-radius: var(--radius-md);
+  position: relative;
+  border-radius: 6px;
   margin: 2px 0;
   height: 44px;
+  transition: var(--ecc-transition);
+}
+
+/* 箭羽装饰线 */
+.sidebar-menu .el-menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 0;
+  background-color: var(--color-primary);
+  border-radius: 0 2px 2px 0;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-menu .el-menu-item:hover::before {
+  height: 50%;
+}
+
+.sidebar-menu .el-menu-item.is-active::before {
+  height: 100%;
 }
 
 .sidebar-menu .el-menu-item:hover {
@@ -213,6 +246,7 @@ onUnmounted(() => {
   background-color: transparent !important;
   border: none !important;
   color: var(--text-muted) !important;
+  transition: var(--ecc-transition);
 }
 
 .scratchpad-btn:hover {
@@ -227,13 +261,18 @@ onUnmounted(() => {
 }
 
 .app-header {
-  height: 56px !important;
+  /* 极客古风：高度减少 10px，更显精致 */
+  height: 46px !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-lg);
+  /* 极客古风：毛玻璃效果 */
+  background-color: var(--ecc-nav-bg, var(--bg-secondary));
   backdrop-filter: blur(8px);
-  transition: background-color var(--transition-slow), border-color var(--transition-slow);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: var(--ecc-transition), background-color var(--transition-slow), border-color var(--transition-slow);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -265,6 +304,6 @@ onUnmounted(() => {
 }
 
 .theme-transition {
-  transition: background-color var(--transition-slow), color var(--transition-slow), border-color var(--transition-slow);
+  transition: var(--ecc-transition);
 }
 </style>

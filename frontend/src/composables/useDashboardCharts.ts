@@ -26,7 +26,7 @@ const diskHistory = ref<number[]>(Array(20).fill(0))
 // ============= 主题配置 =============
 const THEMES: Record<string, ChartTheme> = {
   darcula: { primary: '#3592C4', success: '#67965A', danger: '#E43F3F' },
-  onedark: { primary: '#61AFEF', success: '#98C379', danger: '#E06C75' },
+  anying: { primary: '#61AFEF', success: '#98C379', danger: '#E06C75' },
   gruvbox: { primary: '#D65D0E', success: '#98971A', danger: '#CC241D' },
   intellij: { primary: '#3592C4', success: '#488B49', danger: '#D04438' }
 }

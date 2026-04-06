@@ -10,25 +10,35 @@ __pycache__/
 # Virtual environment
 venv/
 env/
+.venv/
+
+# 环境变量（敏感配置）
 .env
+.env.local
+.env.*.local
+
+# Data directory
+data/
+*.sqlite3
 
 # Frontend
 node_modules/
 dist/
 .npm
+*.log
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.swn
 
 # OS
 .DS_Store
 Thumbs.db
 
 # Logs
-*.log
 logs/
 
 # Uvicorn
@@ -40,3 +50,11 @@ e2e/reports/
 e2e/results/
 playwright-report/
 test-results/
+
+# Docker
+.docker/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
